@@ -1,1 +1,1 @@
-# Datcord
+It's not discord, it's datcord
