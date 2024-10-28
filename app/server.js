@@ -18,9 +18,31 @@ app.use(express.static("public"));
 app.use(express.json());
 
 // event handlers
-app.post("/modify", (req, res) => {});
 
-app.get("/user", (req, res) => {});
+// send username, get back user object
+// populated with updated user information
+app.post("/modify-user", (req, res) => {
+    
+});
+
+
+// send username, get all information about user
+// in an object
+app.get("/get-user", (req, res) => {
+
+});
+
+// send all relevant fields, user object
+// is made in database
+app.post("/add-user", (req, res) => {
+
+});
+
+// send username, returns bool
+// true if user exists, false if not
+app.get("/search-user", (req, res) => {
+
+});
 
 
 //  server startup
