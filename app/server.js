@@ -20,6 +20,11 @@ app.use(express.json());
 // event handlers
 
 // send username, delete old user, add new one with updated information
+// NOTE: if you want to only update one field, set the new value in 'updated<target>'
+// and set all other fields to current value in that user object
+// the current user information can either be gotten from the profile page and grabbed in one go
+// or can be gotten from the /get-user endpoint 
+
 app.post("/modify-user", (req, res) => {
     let body = req.body;
     // make sure body has all relevant attributes
@@ -69,10 +74,12 @@ app.post("/modify-user", (req, res) => {
 
 // send username, get all information about user
 // in an object
+// NOTE: it is assumed this server is not open to the public,
+// hence why passwords are available to grab here
 app.get("/get-user", (req, res) => {
     let username = req.query.username;
     if (username) {
-        pool.query(`SELECT DISTINCT U.username, U.bio, U.status, U.status, U.birthday FROM Users U WHERE U.username = $1`, [username])
+        pool.query(`SELECT DISTINCT U.username, U.hashedPassword, U.bio, U.status, U.status, U.birthday FROM Users U WHERE U.username = $1`, [username])
         .then((result) => {
             let userObj = result.rows[0]
             return res.status(200).json(userObj);
