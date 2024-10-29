@@ -38,7 +38,7 @@ app.post("/modify-user", (req, res) => {
     ) {
         if (
             (body["updatedUsername"].length > 0 && body["updatedUsername"].length <= 16) &&
-            !(body["updatedHashedPassword"].length == 256) &&
+            (body["updatedHashedPassword"].length == 256) &&
             (body["updatedBio"].length >= 0 && body["updatedBio"].length <= 190) &&
             (body["updatedStatus"].length >= 0 && body["updatedStatus"].length <= 16) &&
             (body["updatedDate"].length == 3)
@@ -103,7 +103,7 @@ app.post("/add-user", (req, res) => {
     ) {
         if (
             (body["username"].length > 0 && body["username"].length <= 16) &&
-            !(body["hashedPassword"].length == 256) &&
+            (body["hashedPassword"].length == 256) &&
             (body["bio"].length >= 0 && body["bio"].length <= 190) &&
             (body["status"].length >= 0 && body["status"].length <= 16) &&
             (body["date"].length == 3)
