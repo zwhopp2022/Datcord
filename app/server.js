@@ -111,6 +111,11 @@ app.post("/modify-user", async (req, res) => {
 });
 
 
+app.post("/register", (req, res) => {
+    console.log(req.body);
+    res.send();
+});
+
 // send username, get all information about user
 // in an object
 // NOTE: it is assumed this server is not open to the public,
