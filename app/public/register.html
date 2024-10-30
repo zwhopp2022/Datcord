@@ -7,20 +7,26 @@
     <title>Register</title>
 </head>
 <body>
-    <div class="info">
-        <input name="username" id="username" type="text" placeholder="Username">
+    <div class="info-container">
+        <form id="register-form">
+            <h1 id="login-header">Login to Datcord</h1>
+
+            <div class="info">
+                <input name="username" id="username" required type="text" placeholder="Username">
+            </div>
+            <div class="info">
+                <input name="password" id="password" required type="password" placeholder="Password">
+            </div>
+            <div class="info">
+                <input name="confirm-password" id="confirm-password" required type="password" placeholder="Confirm Password">
+            </div>
+            <div class="info">
+                <input name="birthday" id="birthday" required type="date" max="2024-01-01">
+            </div>
+            <button id="register">Register Account</button>
+            <div id="message"></div>
+        </form>
     </div>
-    <div class="info">
-        <input name="password" id="password" type="password" placeholder="Password">
-    </div>
-    <div class="info">
-        <input name="confirm-password" id="confirm-password" type="password" placeholder="Confirm Password">
-    </div>
-    <div class="info">
-        <input name="birthday" id="birthday" type="date" max="2024-01-01">
-    </div>
-    <button id="register">Register Account</button>
-    <div id="message"></div>
     
     <script src="register.js"></script>
 </body>

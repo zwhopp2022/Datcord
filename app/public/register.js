@@ -4,13 +4,15 @@ let birthday = document.getElementById("birthday");
 let confirmPassword = document.getElementById("confirm-password");
 let register = document.getElementById("register");
 let messageContainer = document.getElementById("message");
+let form = document.getElementById("register-form");
 
-
-register.addEventListener("click", () => {
+form.addEventListener("submit", (event) => {
     let userVal = username.value;
     let passVal = password.value;
     let confirmPassVal = confirmPassword.value;
     let birthdayVal = birthday.value;
+
+    event.preventDefault();
 
     if (passVal !== confirmPassVal) {
         messageContainer.style.color = "red";
