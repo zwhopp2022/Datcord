@@ -1,7 +1,6 @@
 document.addEventListener("DOMContentLoaded", async () => {
   await populateProfileFields();
 
-  // Add event listener to save button after DOM is loaded
   const saveButton = document.getElementById("save-btn");
   if (saveButton) {
       saveButton.addEventListener("click", saveProfileData);
@@ -10,47 +9,69 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 });
 
-
-async function populateProfileFields() {
-  const username = "johndoe";  // replace this with the current logged-in username
+async function fetchUser(username) {
   try {
       const response = await fetch(`http://localhost:3000/get-user?username=${username}`);
-      if (!response.ok) throw new Error("User data could not be fetched");
-
-      const data = await response.json();
-      document.getElementById("username").value = data.username;
-      document.getElementById("bio").value = data.bio;
-      document.getElementById("status").value = data.status;
+      if (!response.ok) throw new Error('Failed to fetch current user data');
+      return await response.json();
   } catch (error) {
-      console.error("Error fetching user data:", error);
+      console.error('Error fetching current user:', error);
+      return null;
   }
 }
 
-function scrapeProfileData() { // scrape profile data from input fields
-  return {
-      username: document.getElementById("username").value,
-      bio: document.getElementById("bio").value,
-      status: document.getElementById("status").value,
-  };
+async function populateProfileFields() {
+  const username = "johndoe"; // placeholder
+  const currentUser = await fetchUser(username);
+
+  if (!currentUser) return;
+
+  document.getElementById("username").value = currentUser.username || '';
+  document.getElementById("bio").value = currentUser.bio || '';
+  document.getElementById("status").value = currentUser.status || '';
+  
+  // convert the date string to array format if it exists
+  if (currentUser.birthday) {
+      const date = new Date(currentUser.birthday);
+      document.getElementById("birthday").value = [
+          date.getFullYear(),
+          (date.getMonth() + 1).toString().padStart(2, '0'),
+          date.getDate().toString().padStart(2, '0')
+      ].join('-');
+  }
 }
 
-async function saveProfileData() { // save profile data to server
-  const updatedData = scrapeProfileData();
+async function saveProfileData() {
+  const username = "johndoe"; // current username (placeholder)
+  const currentUser = await fetchUser(username);
+  if (!currentUser) return;
+
+  // create an updated user object with the correct format
+  const updatedUser = {
+      username: username, // original username for reference
+      updatedUsername: document.getElementById("username").value || currentUser.username,
+      updatedHashedPassword: currentUser.hashedpassword,
+      updatedBio: document.getElementById("bio").value || currentUser.bio,
+      updatedStatus: document.getElementById("status").value || currentUser.status,
+      updatedDate: document.getElementById("birthday").value.split('-') // convert date string to array
+  };
 
   try {
-      const response = await fetch("http://localhost:3000/modify-user", {
-          method: "POST",
+      const response = await fetch('http://localhost:3000/modify-user', {
+          method: 'POST',
           headers: {
-              "Content-Type": "application/json",
+              'Content-Type': 'application/json'
           },
-          body: JSON.stringify(updatedData),
+          credentials: 'include',
+          body: JSON.stringify(updatedUser)
       });
-
-      if (!response.ok) throw new Error("Profile could not be updated");
-
-      alert("Profile updated successfully!");
+      
+      if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Error saving profile data');
+      }
+      console.log('Profile updated successfully!');
   } catch (error) {
-      console.error("Error saving profile data:", error);
-      alert("Failed to update profile.");
+      console.error('Error saving profile data:', error);
   }
 }
