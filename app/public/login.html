@@ -7,14 +7,20 @@
     <title>Login</title>
 </head>
 <body>
-    <div class="info">
-        <input name="username" id="username" type="text" placeholder="Username">
+    <div class="info-container">
+        <form id="login-form">
+            <h1 id="login-header">Login to Datcord</h1>
+
+            <div class="info">
+                <input name="username" id="username" required type="text" placeholder="Username">
+            </div>
+            <div class="info">
+                <input name="password" id="password" required type="password" placeholder="Password">
+            </div>
+            <button type="submit" id="login">Login</button>
+            <div id="message"></div>
+        </form>
     </div>
-    <div class="info">
-        <input name="password" id="password" type="password" placeholder="Password">
-    </div>
-    <button id="login">Login</button>
-    <div id="message"></div>
     
     <script src="login.js"></script>
 </body>
