@@ -1,5 +1,6 @@
 const pg = require("pg");
 const express = require("express");
+const bcrypt = require('bcrypt');
 const app = express();
 
 const port = 3000;
@@ -27,10 +28,17 @@ async function searchHelper(username) {
     }
 }
 
+async function hashPassword(password) {
+    let salt = await bcrypt.genSalt();
+    let hashedPassword = await bcrypt.hash(password, salt);
+
+    return hashedPassword;
+}
+
 function checkAttributes(body) {
     if (
         body.hasOwnProperty("username") &&
-        body.hasOwnProperty("hashedPassword") &&
+        body.hasOwnProperty("password") &&
         body.hasOwnProperty("bio") &&
         body.hasOwnProperty("status") &&
         body.hasOwnProperty("date")
@@ -44,22 +52,21 @@ function checkAttributes(body) {
 function validateAttributes(body) {
     if (
         (body["username"].length > 0 && body["username"].length <= 16) &&
-        (body["hashedPassword"].length == 64) &&
+        (body["password"].length <= 72) &&
         (body["bio"].length >= 0 && body["bio"].length <= 190) &&
-        (body["status"].length >= 0 && body["status"].length <= 16) &&
-        (body["date"].length == 3)
+        (body["status"].length >= 0 && body["status"].length <= 32) &&
+        (body["date"].length == 10)
     ) {
         return true;
     } else {
         return false;
     }
 }
-
 // this allows us to reuse the validors above for modifying existing users
 function buildUserFromUpdatedInformation(updateBody) {
     let body = {};
     body["username"] = updateBody["updatedUsername"] ? updateBody["updatedUsername"] : null;
-    body["hashedPassword"] = updateBody["updatedHashedPassword"] ? updateBody["updatedHashedPassword"] : null;
+    body["password"] = updateBody["updatedPassword"] ? updateBody["updatedPassword"] : null;
     body["bio"] = updateBody["updatedBio"] ? updateBody["updatedBio"] : null;
     body["status"] = updateBody["updatedStatus"] ? updateBody["updatedStatus"] : null;
     body["date"] = updateBody["updatedDate"] ? updateBody["updatedDate"] : null;
@@ -88,11 +95,10 @@ app.post("/modify-user", async (req, res) => {
     if (checkAttributes(body)) {
         if (validateAttributes(body)) {
             if (await searchHelper(req.body["username"])) {
-                // format date and query, update user with new informations
-                let formattedDate = `${body["date"][0]}-${body["date"][1].padStart(2, '0')}-${body["date"][2].padStart(2, '0')}`;
+                let hashedPassword = await hashPassword(body["updatedPassword"]);
                 pool.query(
                     `UPDATE Users SET username = $1, hashedPassword = $2, bio = $3, status = $4, birthday = $5 WHERE username = $6`,
-                    [body["username"], body["hashedPassword"], body["bio"], body["status"], formattedDate, req.body["username"]]
+                    [body["username"], hashedPassword, body["bio"], body["status"], body["date"], req.body["username"]]
                 ).then((result) => {
                     return res.status(200).json({ "message": "user successfully modified" });
                 }).catch((error) => {
@@ -109,13 +115,6 @@ app.post("/modify-user", async (req, res) => {
         return res.status(500).json({ "error": "missing user information" });
     }
 });
-
-
-app.post("/register", (req, res) => {
-    console.log(req.body);
-    res.send();
-});
-
 // send username, get all information about user
 // in an object
 // NOTE: it is assumed this server is not open to the public,
@@ -145,12 +144,12 @@ app.post("/add-user", async (req, res) => {
         if (await searchHelper(body["username"])) {
             return res.status(400).json({ "message": "user already exists" });
         } else {
-            if (validateAttributes(body)) {
-                // format date and query, send query and then catch any errors
-                let formattedDate = `${body["date"][0]}-${body["date"][1].padStart(2, '0')}-${body["date"][2].padStart(2, '0')}`;
+            if (validateAttributes(body)) {                
+                let hashedPassword = await hashPassword(body["password"]);
+                let status = "chillin on datcord :3";
                 pool.query(
                     `INSERT INTO Users (username, hashedPassword, bio, status, birthday) VALUES($1, $2, $3, $4, $5)`,
-                    [body["username"], body["hashedPassword"], body["bio"], body["status"], formattedDate]
+                    [body["username"], hashedPassword, body["bio"], status, body["date"]]
                 ).then((result) => {
                     return res.status(200).json({ "message": "user successfully added to database" });
                 }).catch((error) => {

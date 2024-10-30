@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
     <title>Register</title>
 </head>
 <body>
@@ -15,8 +16,11 @@
     <div class="info">
         <input name="confirm-password" id="confirm-password" type="password" placeholder="Confirm Password">
     </div>
+    <div class="info">
+        <input name="birthday" id="birthday" type="date" max="2024-01-01">
+    </div>
     <button id="register">Register Account</button>
-    <div id="error"></div>
+    <div id="message"></div>
     
     <script src="register.js"></script>
 </body>
