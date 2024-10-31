@@ -8,7 +8,7 @@ const hostname = "localhost";
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/profile', (req, res) => {
-  res.sendFile(path.resolve(__dirname, 'public', 'profile.html')); 
+  res.sendFile(path.resolve(__dirname, 'public', 'profile', 'profile.html')); 
 });
 
 //  server startup

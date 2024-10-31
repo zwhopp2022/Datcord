@@ -1,12 +1,5 @@
 document.addEventListener("DOMContentLoaded", async () => {
   await populateProfileFields();
-
-  const saveButton = document.getElementById("save-btn");
-  if (saveButton) {
-      saveButton.addEventListener("click", saveProfileData);
-  } else {
-      console.error("Save button not found in the DOM.");
-  }
 });
 
 async function fetchUser(username) {
