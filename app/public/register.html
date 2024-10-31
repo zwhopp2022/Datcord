@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
+    <title>Register</title>
+</head>
+<body>
+    <div class="info-container">
+        <form id="register-form">
+            <h1 id="login-header">Register an account for Datcord</h1>
+
+            <div class="info">
+                <input name="username" id="username" required type="text" placeholder="Username">
+            </div>
+            <div class="info">
+                <input name="password" id="password" required type="password" placeholder="Password">
+            </div>
+            <div class="info">
+                <input name="confirm-password" id="confirm-password" required type="password" placeholder="Confirm Password">
+            </div>
+            <div class="info">
+                <input name="birthday" id="birthday" required type="date" max="2024-01-01">
+            </div>
+            <button type="submit" id="register">Register Account</button>
+            <div class="login-link">
+                Already have an account? <a href="login.html">Login Here</a>
+            </div>
+            <div id="message"></div>
+        </form>
+    </div>
+    
+    <script src="register.js"></script>
+</body>
+</html>
