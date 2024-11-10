@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS Users (
     bio VARCHAR(190),
     status VARCHAR(32),
     birthday DATE
+
 );
 
 -- table for Friend-pairs based on username
