@@ -73,7 +73,7 @@ function validateUserAttributes(body) {
 function buildUserFromUpdatedInformation(updateBody) {
     let body = {};
     body["username"] = updateBody["updatedUsername"] || updateBody["username"];
-    body["password"] = updateBody["updatedPassword"] || "dummy-password-unchanged";
+    body["password"] = updateBody["updatedPassword"] || "";
     body["bio"] = updateBody["updatedBio"] || "";
     body["status"] = updateBody["updatedStatus"] || "";
     body["date"] = updateBody["updatedDate"] || [];
@@ -110,6 +110,36 @@ async function validateFriendAttributes(body) {
     }
 }
 
+async function updateFriendsTableUsername(oldUsername, newUsername) {
+    try {
+        await pool.query(
+            `UPDATE Friends 
+             SET usernameOne = $1 
+             WHERE usernameOne = $2`,
+            [newUsername, oldUsername]
+        );
+        
+        await pool.query(
+            `UPDATE Friends 
+             SET usernameTwo = $1 
+             WHERE usernameTwo = $2`,
+            [newUsername, oldUsername]
+        );
+
+        await pool.query(
+            `UPDATE Friends 
+             SET sentBy = $1 
+             WHERE sentBy = $2`,
+            [newUsername, oldUsername]
+        );
+        
+        return true;
+    } catch (error) {
+        console.error('Error updating friends table:', error);
+        return false;
+    }
+}
+
 // startup connections and middleware
 pool.connect().then(function () {
     console.log(`Connected to database ${env.database}`);
@@ -128,27 +158,64 @@ app.use(express.json());
 
 app.post("/modify-user", async (req, res) => {
     let body = buildUserFromUpdatedInformation(req.body);
-    // make sure body has all relevant attributes
     if (checkUserAttributes(body)) {
         if (validateUserAttributes(body)) {
             if (await searchUserHelper(req.body["username"])) {
-                // Only hash password if it's not the dummy value
-                let hashedPassword = body["password"] === "dummy-password-unchanged" 
-                    ? req.body["updatedHashedPassword"]  // Use existing hashed password
-                    : await hashPassword(body["password"]);
-                    
-                pool.query(
-                    `UPDATE Users SET username = $1, hashedPassword = $2, bio = $3, status = $4, birthday = $5 WHERE username = $6`,
-                    [body["username"], hashedPassword, body["bio"], body["status"], body["date"], req.body["username"]]
-                ).then((result) => {
-                    return res.status(200).json({ "message": "user successfully modified" });
-                }).catch((error) => {
-                    return res.status(400).json({ "message": "failed to find user in database" });
-                });
+                // Only update fields that were provided
+                let query = 'UPDATE Users SET ';
+                let params = [];
+                let paramCount = 1;
+                let updates = [];
+
+                // Build dynamic query based on provided fields
+                if (body["username"]) {
+                    updates.push(`username = $${paramCount}`);
+                    params.push(body["username"]);
+                    paramCount++;
+                }
+                if (body["password"]) {
+                    let hashedPassword = await hashPassword(body["password"]);
+                    updates.push(`hashedPassword = $${paramCount}`);
+                    params.push(hashedPassword);
+                    paramCount++;
+                }
+                if (body["bio"]) {
+                    updates.push(`bio = $${paramCount}`);
+                    params.push(body["bio"]);
+                    paramCount++;
+                }
+                if (body["status"]) {
+                    updates.push(`status = $${paramCount}`);
+                    params.push(body["status"]);
+                    paramCount++;
+                }
+                if (body["date"]) {
+                    updates.push(`birthday = $${paramCount}`);
+                    params.push(body["date"]);
+                    paramCount++;
+                }
+
+                query += updates.join(', ');
+                query += ` WHERE username = $${paramCount}`;
+                params.push(req.body["username"]);
+
+                pool.query(query, params)
+                    .then(async (result) => {
+                        // If username was updated, update Friends table
+                        if (body["username"] && body["username"] !== req.body["username"]) {
+                            const friendsUpdated = await updateFriendsTableUsername(req.body["username"], body["username"]);
+                            if (!friendsUpdated) {
+                                return res.status(400).json({ "message": "failed to update friends relationships" });
+                            }
+                        }
+                        return res.status(200).json({ "message": "user successfully modified" });
+                    })
+                    .catch((error) => {
+                        return res.status(400).json({ "message": "failed to update user in database" });
+                    });
             } else {
                 return res.status(400).json({ "message": "failed to find user in database" });
             }
-
         } else {
             return res.status(500).json({ "error": "misformatted user information" });
         }
