@@ -12,7 +12,8 @@ const Pool = pg.Pool;
 const pool = new Pool(env); 
 
 app.use(cors({
-    origin: 'http://localhost:3001'  // Allow requests from this specific origin
+    origin: 'http://localhost:3001',  // Allow requests from this specific origin
+    credentials: true
 }));
 
 async function searchUserHelper(username) {
@@ -71,11 +72,11 @@ function validateUserAttributes(body) {
 // this allows us to reuse the validors above for modifying existing users
 function buildUserFromUpdatedInformation(updateBody) {
     let body = {};
-    body["username"] = updateBody["updatedUsername"] ? updateBody["updatedUsername"] : null;
-    body["password"] = updateBody["updatedPassword"] ? updateBody["updatedPassword"] : null;
-    body["bio"] = updateBody["updatedBio"] ? updateBody["updatedBio"] : null;
-    body["status"] = updateBody["updatedStatus"] ? updateBody["updatedStatus"] : null;
-    body["date"] = updateBody["updatedDate"] ? updateBody["updatedDate"] : null;
+    body["username"] = updateBody["updatedUsername"] || updateBody["username"];
+    body["password"] = updateBody["updatedPassword"] || "dummy-password-unchanged";
+    body["bio"] = updateBody["updatedBio"] || "";
+    body["status"] = updateBody["updatedStatus"] || "";
+    body["date"] = updateBody["updatedDate"] || [];
     return body;
 }
 
@@ -131,7 +132,11 @@ app.post("/modify-user", async (req, res) => {
     if (checkUserAttributes(body)) {
         if (validateUserAttributes(body)) {
             if (await searchUserHelper(req.body["username"])) {
-                let hashedPassword = await hashPassword(body["updatedPassword"]);
+                // Only hash password if it's not the dummy value
+                let hashedPassword = body["password"] === "dummy-password-unchanged" 
+                    ? req.body["updatedHashedPassword"]  // Use existing hashed password
+                    : await hashPassword(body["password"]);
+                    
                 pool.query(
                     `UPDATE Users SET username = $1, hashedPassword = $2, bio = $3, status = $4, birthday = $5 WHERE username = $6`,
                     [body["username"], hashedPassword, body["bio"], body["status"], body["date"], req.body["username"]]

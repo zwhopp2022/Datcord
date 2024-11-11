@@ -1,5 +1,7 @@
 document.addEventListener("DOMContentLoaded", async () => {
   await populateProfileFields();
+
+  document.getElementById("save-btn").addEventListener("click", saveProfileData);
 });
 
 async function fetchUser(username) {
@@ -43,7 +45,7 @@ async function saveProfileData() {
   const updatedUser = {
       username: username, // original username for reference
       updatedUsername: document.getElementById("username").value || currentUser.username,
-      updatedHashedPassword: currentUser.hashedpassword,
+      updatedHashedPassword: currentUser.hashedPassword,
       updatedBio: document.getElementById("bio").value || currentUser.bio,
       updatedStatus: document.getElementById("status").value || currentUser.status,
       updatedDate: document.getElementById("birthday").value.split('-') // convert date string to array
