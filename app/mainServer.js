@@ -21,6 +21,10 @@ app.get('/friends', (req, res) => {
   res.sendFile(path.resolve(__dirname, 'public', 'friends', 'friends.html')); 
 });
 
+app.get('/home', (req, res) => {
+  res.sendFile(path.resolve(__dirname, 'public', 'home', 'home.html')); 
+});
+
 //  server startup
 app.listen(port, hostname, () => {
   console.log(`Listening at: http://${hostname}:${port}`);
