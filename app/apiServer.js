@@ -176,28 +176,24 @@ app.post("/add-user", async (req, res) => {
     let body = req.body;
     // make sure body has all relevant attributes
     if (checkUserAttributes(body)) {
-        if (body.hasOwnProperty("sentBy") && (body["sentBy"] === body["usernameOne"] || body["sentBy"] === body["usernameTwo"])) {
-            // make sure we don't already have a user by this username
-            if (await searchUserHelper(body["username"])) {
-                return res.status(400).json({ "message": "user already exists" });
-            } else {
-                if (validateUserAttributes(body)) {                
-                    let hashedPassword = await hashPassword(body["password"]);
-                    let status = "chillin on datcord :3";
-                    pool.query(
-                        `INSERT INTO Users (username, hashedPassword, bio, status, birthday) VALUES($1, $2, $3, $4, $5)`,
-                        [body["username"], hashedPassword, body["bio"], status, body["date"]]
-                    ).then((result) => {
-                        return res.status(200).json({ "message": "user successfully added to database" });
-                    }).catch((error) => {
-                        return res.status(400).json({ "message": "failed to add user to database" });
-                    });
-                } else {
-                    return res.status(500).json({ "error": "misformatted user information" });
-                }
-            }
+        // make sure we don't already have a user by this username
+        if (await searchUserHelper(body["username"])) {
+            return res.status(400).json({ "message": "user already exists" });
         } else {
-            return res.status(500).json({ "error": "sentBy field missing or misformatted" });
+            if (validateUserAttributes(body)) {                
+                let hashedPassword = await hashPassword(body["password"]);
+                let status = "chillin on datcord :3";
+                pool.query(
+                    `INSERT INTO Users (username, hashedPassword, bio, status, birthday) VALUES($1, $2, $3, $4, $5)`,
+                    [body["username"], hashedPassword, body["bio"], status, body["date"]]
+                ).then((result) => {
+                    return res.status(200).json({ "message": "user successfully added to database" });
+                }).catch((error) => {
+                    return res.status(400).json({ "message": "failed to add user to database" });
+                });
+            } else {
+                return res.status(500).json({ "error": "misformatted user information" });
+            }
         }
     } else {
         return res.status(500).json({ "error": "missing user information" });
@@ -227,17 +223,21 @@ app.get("/search-user", async (req, res) => {
 app.post('/add-friend', async (req, res) => {
     let body = req.body;
     if (checkFriendAttributes(body)) {
-        if (await validateFriendAttributes(body)) {
-            pool.query(
-                `INSERT INTO Friends (usernameOne, usernameTwo, isFriendRequest, sentBy) VALUES($1, $2, $3, $4)`,
-                [body["usernameOne"], body["usernameTwo"], true, body["sentBy"]]
-            ).then((result) => {
-                return res.status(200).json({ "message": "friend pair successfully added to database" });
-            }).catch((error) => {
-                return res.status(400).json({ "message": "failed to add friend pair to database" });
-            });
+        if (body.hasOwnProperty("sentBy") && (body["sentBy"] === body["usernameOne"] || body["sentBy"] === body["usernameTwo"])) {
+            if (await validateFriendAttributes(body)) {
+                pool.query(
+                    `INSERT INTO Friends (usernameOne, usernameTwo, isFriendRequest, sentBy) VALUES($1, $2, $3, $4)`,
+                    [body["usernameOne"], body["usernameTwo"], true, body["sentBy"]]
+                ).then((result) => {
+                    return res.status(200).json({ "message": "friend pair successfully added to database" });
+                }).catch((error) => {
+                    return res.status(400).json({ "message": "failed to add friend pair to database" });
+                });
+            } else {
+                return res.status(400).json({ "message": "one or more users not found" });
+            }
         } else {
-            return res.status(400).json({ "message": "one or more users not found" });
+            return res.status(500).json({ "error": "sentBy field missing or misformatted" });
         }
     } else {
         return res.status(500).json({ "error": "missing user information" });
