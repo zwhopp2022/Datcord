@@ -9,5 +9,6 @@ CREATE TABLE IF NOT EXISTS Users (
     hashedPassword VARCHAR(72),
     bio VARCHAR(190),
     status VARCHAR(32),
-    birthday DATE
+    birthday DATE,
+    token VARCHAR(32) DEFAULT ''
 );

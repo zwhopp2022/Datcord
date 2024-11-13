@@ -1,14 +1,63 @@
 const pg = require("pg");
 const express = require("express");
 const bcrypt = require('bcrypt');
+const cookieParser = require("cookie-parser");
+const cors = require('cors');
 const app = express();
 
 const port = 3000;
 const hostname = "localhost";
 
-const env = require("../appSettings.json");
+const env = require("../appsettings.json");
 const Pool = pg.Pool;
 const pool = new Pool(env); 
+
+app.use(express.static("public"));
+app.use(express.json());
+app.use(cookieParser());
+app.use(authorize);
+
+app.use(cors({
+    origin: `http://${hostname}:3001`  // Allow requests from this specific origin
+  }));
+
+let cookieOptions = {
+    httpOnly: true, // client js can't access
+    secure: true, // prevents packet sniffing by using https
+    sameSite: "strict", // only include this cookie on requests to the same domain
+};
+
+function makeToken() {
+    return crypto.randomBytes(32).toString("hex");
+}
+
+function saveToken(username, hashedToken) {
+    pool.query(
+        `UPDATE Users SET token = $1 WHERE username = $2`,
+        [hashedToken, username]
+    ).then((result) => {
+        return true;
+    }).catch((error) => {
+        console.log("Error saving token");
+        return false;
+    });
+}
+
+// returns true if a users token is existing in the database
+function searchToken(token) {
+    pool.query(`SELECT U.token FROM Users U`)
+    .then((result) => {
+        let tokens = result.rows.map(row => row.token);
+        for (currToken of tokens) {
+            if (bcrypt.compare(token, currToken)) {
+                return true;
+            }
+        }
+        return false;
+    }).catch((error) => {
+        return false;
+    })
+}
 
 async function searchHelper(username) {
     if (username) {
@@ -28,11 +77,11 @@ async function searchHelper(username) {
     }
 }
 
-async function hashPassword(password) {
+async function hashItem(password) {
     let salt = await bcrypt.genSalt();
-    let hashedPassword = await bcrypt.hash(password, salt);
+    let hashedItem= await bcrypt.hash(password, salt);
 
-    return hashedPassword;
+    return hashedItem;
 }
 
 function checkAttributes(body) {
@@ -73,14 +122,21 @@ function buildUserFromUpdatedInformation(updateBody) {
     return body;
 }
 
+function getUserPassHash(username) {
+    pool.query(`SELECT DISTINCT U.hashedPassword FROM Users U WHERE U.username = $1`, [username])
+    .then((result) => {
+        let hashedPassword = result.rows[0];
+        return hashedPassword;
+    }).catch((error) => {
+        return "Error getting hashed password";
+    });
+}
+
 // startup connections and middleware
 pool.connect().then(function () {
     console.log(`Connected to database ${env.database}`);
 });
   
-app.use(express.static("public"));
-app.use(express.json());
-
 // event handlers
 
 // send username, delete old user, add new one with updated information
@@ -95,7 +151,7 @@ app.post("/modify-user", async (req, res) => {
     if (checkAttributes(body)) {
         if (validateAttributes(body)) {
             if (await searchHelper(req.body["username"])) {
-                let hashedPassword = await hashPassword(body["updatedPassword"]);
+                let hashedPassword = await hashItem(body["updatedPassword"]);
                 pool.query(
                     `UPDATE Users SET username = $1, hashedPassword = $2, bio = $3, status = $4, birthday = $5 WHERE username = $6`,
                     [body["username"], hashedPassword, body["bio"], body["status"], body["date"], req.body["username"]]
@@ -145,7 +201,7 @@ app.post("/add-user", async (req, res) => {
             return res.status(400).json({ "message": "user already exists" });
         } else {
             if (validateAttributes(body)) {                
-                let hashedPassword = await hashPassword(body["password"]);
+                let hashedPassword = await hashItem(body["password"]);
                 let status = "chillin on datcord :3";
                 pool.query(
                     `INSERT INTO Users (username, hashedPassword, bio, status, birthday) VALUES($1, $2, $3, $4, $5)`,
@@ -164,6 +220,48 @@ app.post("/add-user", async (req, res) => {
     }
 
 });
+
+app.post("/login", async (req, res) => {
+    let body = req.body;
+    let plainPassword;
+    let username;
+    let hash;
+    let verified;
+    if (body.hasOwnProperty("username") && body.hasOwnProperty("password")) {
+        username = body.username;
+        plainPassword = body.password;
+
+        if (!searchHelper(username)) {
+            return res.status(400).json({"error": "Username or Password incorrect"});
+        } 
+
+        try {
+            hash = getUserPassHash(username);
+            verified = await bcrypt.compare(plainPassword, hash);
+        } catch (error) {
+            console.log("Error verifying");
+            return res.status(500);
+        }
+
+        if (!verified) {
+            return res.status(400).json({"error": "Incorrect Username or Password"});
+        }
+
+        let token = makeToken();
+        let hashedToken = hashItem(token);
+        saveToken(username, hashedToken);
+    } else {
+        return res.json({"error": "Missing login properties"});
+    }
+}); 
+
+let authorize = (req, res, next) => {
+    let { token } = req.cookies;
+    if (token === undefined || !searchToken(token)) {
+        return res.status(403);
+    }
+    next();
+};
 
 // send username, returns bool
 // true if user exists, false if not
