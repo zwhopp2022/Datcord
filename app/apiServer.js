@@ -3,6 +3,7 @@ const express = require("express");
 const bcrypt = require('bcrypt');
 const cookieParser = require("cookie-parser");
 const cors = require('cors');
+let crypto = require("crypto");
 const app = express();
 
 const port = 3000;
@@ -15,11 +16,26 @@ const pool = new Pool(env);
 app.use(express.static("public"));
 app.use(express.json());
 app.use(cookieParser());
-app.use(authorize);
 
 app.use(cors({
     origin: `http://${hostname}:3001`  // Allow requests from this specific origin
   }));
+
+
+let authorize = (req, res, next) => {
+    let noVerificationPaths = ["/add-user", "/login"];
+    console.log(req.path);
+    if (noVerificationPaths.includes(req.path)) {
+        return next();
+    }
+    let { token } = req.cookies;
+    if (token === undefined || !searchToken(token)) {
+        console.log("not allowed");
+        return res.status(403).send("Not allowed");
+    }
+    next();
+};
+app.use(authorize);
 
 let cookieOptions = {
     httpOnly: true, // client js can't access
@@ -38,7 +54,7 @@ function saveToken(username, hashedToken) {
     ).then((result) => {
         return true;
     }).catch((error) => {
-        console.log("Error saving token");
+        console.log(`Error saving token: ${error}`);
         return false;
     });
 }
@@ -176,14 +192,14 @@ function buildUserFromUpdatedInformation(updateBody) {
     return body;
 }
 
-function getUserPassHash(username) {
-    pool.query(`SELECT DISTINCT U.hashedPassword FROM Users U WHERE U.username = $1`, [username])
-    .then((result) => {
-        let hashedPassword = result.rows[0];
-        return hashedPassword;
-    }).catch((error) => {
-        return "Error getting hashed password";
-    });
+async function getUserPassHash(username) {
+    try {
+        let hashedPasswordResult = await pool.query(`SELECT U.hashedPassword FROM Users U WHERE U.username = $1`, [username]);
+        let hashedPassword = hashedPasswordResult.rows[0]?.hashedpassword;
+        return hashedPassword || "No password hash";
+    } catch (error) {
+        console.log(`Error getting the password hash of user: ${username}, error: ${error}`);
+    }
 }
 
 function checkFriendAttributes(body) {
@@ -394,7 +410,7 @@ app.post("/login", async (req, res) => {
         } 
 
         try {
-            hash = getUserPassHash(username);
+            hash = await getUserPassHash(username);
             verified = await bcrypt.compare(plainPassword, hash);
         } catch (error) {
             console.log("Error verifying");
@@ -406,20 +422,14 @@ app.post("/login", async (req, res) => {
         }
 
         let token = makeToken();
-        let hashedToken = hashItem(token);
+        let hashedToken = await hashItem(token);
         saveToken(username, hashedToken);
+        return res.status(200).cookie("token", token, cookieOptions).send();
     } else {
         return res.json({"error": "Missing login properties"});
     }
 }); 
 
-let authorize = (req, res, next) => {
-    let { token } = req.cookies;
-    if (token === undefined || !searchToken(token)) {
-        return res.status(403);
-    }
-    next();
-};
 
 // send username, returns bool
 // true if user exists, false if not
