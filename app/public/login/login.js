@@ -9,31 +9,25 @@ form.addEventListener("submit", (event) => {
     let passVal = password.value;
 
     event.preventDefault();
-
-    if (passVal !== confirmPassVal) {
-        messageContainer.style.color = "red";
-        messageContainer.textContent = "Passwords do not match!";
-    } else {
-        messageContainer.textContent = "";
-        fetch('http://localhost:3000/login', {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({username: userVal, password: passVal}),
-        }).then(response => {
-            response.json().then((body) => {
-                if (response.ok) {
-                    messageContainer.style.color = "green";
-                    messageContainer.textContent = "Logged in!";
-                } else if (response.status === 400) {
-                    messageContainer.style.color = "red";
-                    messageContainer.textContent = body.message;
-                } else {
-                    messageContainer.style.color = "red";
-                    messageContainer.textContent = body.error;
-                }
-            })
-        });
-    }
+    messageContainer.textContent = "";
+    fetch('http://localhost:3000/login', {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({username: userVal, password: passVal}),
+    }).then(response => {
+        response.json().then((body) => {
+            if (response.ok) {
+                messageContainer.style.color = "green";
+                messageContainer.textContent = "Logged in!";
+            } else if (response.status === 400) {
+                messageContainer.style.color = "red";
+                messageContainer.textContent = body.message;
+            } else {
+                messageContainer.style.color = "red";
+                messageContainer.textContent = body.error;
+            }
+        })
+    });
 });
