@@ -424,7 +424,7 @@ app.post("/login", async (req, res) => {
         let token = makeToken();
         let hashedToken = await hashItem(token);
         saveToken(username, hashedToken);
-        return res.status(200).cookie("token", token, cookieOptions).send();
+        return res.status(200).cookie("token", token, cookieOptions).json({}).send();
     } else {
         return res.json({"error": "Missing login properties"});
     }
