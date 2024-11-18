@@ -17,12 +17,6 @@ app.use(cors({
 }));
 
 async function searchUserHelper(username) {
-app.use(cors({
-    origin: 'http://localhost:3001',  // Allow requests from this specific origin
-    credentials: true
-}));
-
-async function searchUserHelper(username) {
     if (username) {
         return pool.query(`SELECT DISTINCT U.username, U.bio, U.status, U.status, U.birthday FROM Users U WHERE U.username = $1`, [username])
         .then((result) => {
