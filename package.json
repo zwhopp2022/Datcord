@@ -2,13 +2,18 @@
   "dependencies": {
     "axios": "^1.7.7",
     "bcrypt": "^5.1.1",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
+    "crypto": "^1.0.1",
     "express": "^4.21.1",
     "node-fetch": "^2.7.0",
     "pg": "^8.13.1"
   },
   "scripts": {
-    "start": "cd app && node apiServer.js",
+    "start": "cd app && concurrently \"node mainServer.js\" \"node apiServer.js\"",
     "setup": "psql -U postgres -f sql/setup.sql"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
   }
 }

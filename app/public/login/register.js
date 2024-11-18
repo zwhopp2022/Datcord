@@ -19,7 +19,7 @@ form.addEventListener("submit", (event) => {
         messageContainer.textContent = "Passwords do not match!";
     } else {
         messageContainer.textContent = "";
-        fetch('/add-user', {
+        fetch('http://localhost:3000/add-user', {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
