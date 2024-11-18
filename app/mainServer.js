@@ -7,7 +7,8 @@ const port = 3001;
 const hostname = "localhost";
 
 app.use(cors({
-  origin: 'http://localhost:3000'  // Allow requests from this specific origin
+  origin: 'http://localhost:3000',  // Allow requests from this specific origin
+  credentials: true
 }));
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -18,6 +19,10 @@ app.get('/profile', (req, res) => {
 
 app.get('/friends', (req, res) => {
   res.sendFile(path.resolve(__dirname, 'public', 'friends', 'friends.html')); 
+});
+
+app.get('/home', (req, res) => {
+  res.sendFile(path.resolve(__dirname, 'public', 'home', 'home.html')); 
 });
 
 //  server startup

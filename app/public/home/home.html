@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home</title>
+    <link rel="stylesheet" href="home.css">
+</head>
+<body>
+    <div class="side-panel" id="side-panel">
+        <h1 id="left-panel-header" style="padding: 5%;">Your Chats</h1>
+        <div id="chats">
+            <!-- Chat list will be dynamically inserted here -->
+        </div>
+        <div class="nav-container">
+            <button id="friends-nav-btn" onclick="window.location.href='/friends'">Friends</button>
+        </div>
+    </div>
+    <div class="main-content">
+        <div id="chat-container">
+            <!-- Messages will be dynamically inserted here -->
+        </div>
+        <div class="message-input-container">
+            <input type="text" id="message-input" placeholder="Type a message..." maxlength="1000">
+            <button id="send-button">Send</button>
+        </div>
+    </div>
+    <script src="home.js"></script>
+</body>
+</html>

@@ -9,6 +9,7 @@
 <body>
     <div class="profile-container">
         <h1>User Profile</h1>
+        <div id="message-container" class="message-container"></div>
         <div class="profile-field">
           <label for="username">Username</label>
           <input type="text" id="username" name="username" maxlength="16">
@@ -24,6 +25,14 @@
         <div class="profile-field">
             <label for="birthday">Birthday</label>
             <input type="date" id="birthday" name="birthday">
+        </div>
+        <div class="profile-field">
+            <label for="new-password">New Password</label>
+            <input type="password" id="new-password" name="new-password" maxlength="72">
+        </div>
+        <div class="profile-field">
+            <label for="confirm-password">Confirm New Password</label>
+            <input type="password" id="confirm-password" name="confirm-password" maxlength="72">
         </div>
         <button id="save-btn">Save Changes</button>
     </div>
