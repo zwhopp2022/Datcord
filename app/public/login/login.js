@@ -21,6 +21,8 @@ form.addEventListener("submit", (event) => {
             if (response.ok) {
                 messageContainer.style.color = "green";
                 messageContainer.textContent = "Logged in!";
+                localStorage.setItem('currentUser', JSON.stringify({ username: userVal, token: body.token }));
+                window.location.href = '/home';
             } else if (response.status === 400) {
                 messageContainer.style.color = "red";
                 messageContainer.textContent = body.message;

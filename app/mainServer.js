@@ -25,6 +25,14 @@ app.get('/home', (req, res) => {
   res.sendFile(path.resolve(__dirname, 'public', 'home', 'home.html')); 
 });
 
+app.get('/login', (req, res) => {
+  res.sendFile(path.resolve(__dirname, 'public', 'login', 'login.html')); 
+});
+
+app.get('/register', (req, res) => {
+  res.sendFile(path.resolve(__dirname, 'public', 'register', 'register.html')); 
+});
+
 //  server startup
 app.listen(port, hostname, () => {
   console.log(`Listening at: http://${hostname}:${port}`);

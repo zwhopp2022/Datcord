@@ -22,15 +22,14 @@ app.use(cors({
     credentials: true
   }));
 
-
-let authorize = (req, res, next) => {
+let authorize = async (req, res, next) => {
     let noVerificationPaths = ["/add-user", "/login"];
     console.log(req.path);
     if (noVerificationPaths.includes(req.path)) {
         return next();
     }
-    let { token } = req.cookies;
-    if (token === undefined || !searchToken(token)) {
+    let token = req.headers['authorization']?.split(' ')[1];
+    if (token === undefined || !(await searchToken(token))) {
         console.log("not allowed");
         return res.status(403).send("Not allowed");
     }
@@ -45,7 +44,7 @@ let cookieOptions = {
 };
 
 function makeToken() {
-    return crypto.randomBytes(32).toString("hex");
+    return crypto.randomBytes(16).toString("hex");
 }
 
 function saveToken(username, hashedToken) {
@@ -61,19 +60,14 @@ function saveToken(username, hashedToken) {
 }
 
 // returns true if a users token is existing in the database
-function searchToken(token) {
-    pool.query(`SELECT U.token FROM Users U`)
-    .then((result) => {
-        let tokens = result.rows.map(row => row.token);
-        for (currToken of tokens) {
-            if (bcrypt.compare(token, currToken)) {
-                return true;
-            }
-        }
+async function searchToken(token) {
+    try {
+        let result = await pool.query(`SELECT U.token FROM Users U WHERE U.token = $1`, [token]);
+        return result.rows.length > 0;
+    } catch (error) {
+        console.log(`Error searching token: ${error}`);
         return false;
-    }).catch((error) => {
-        return false;
-    })
+    }
 }
 
 async function searchUserHelper(username) {
@@ -350,7 +344,7 @@ app.post("/login", async (req, res) => {
         username = body.username;
         plainPassword = body.password;
 
-        if (!searchHelper(username)) {
+        if (!searchUserHelper(username)) {
             return res.status(400).json({"error": "Username or Password incorrect"});
         } 
 
@@ -374,7 +368,6 @@ app.post("/login", async (req, res) => {
         return res.json({"error": "Missing login properties"});
     }
 }); 
-
 
 // send username, returns bool
 // true if user exists, false if not

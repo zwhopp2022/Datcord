@@ -1,4 +1,3 @@
-
 let friends = [];
 let friendRequests = [];
 let currentUser = null;
@@ -242,49 +241,49 @@ function addFriendRequestToMainBody(username) {
     mainBody.appendChild(requestDiv);
 }
 
-
-// this is hardcoded right now, username param need to change with logged in user
-let user = fetch("http://localhost:3000/get-user?username=johndoe", {}).then(response => {
-    if (response.ok && response.headers.get("Content-Type")?.includes("application/json")) {
-        return response.json();  // Parse JSON if content type is JSON
+document.addEventListener("DOMContentLoaded", async () => {
+    let storedUser = localStorage.getItem('currentUser');
+    if (storedUser) {
+        let currentUser = JSON.parse(storedUser);
+        document.getElementById("left-panel-header").textContent = `${currentUser.username}'s Friends`;
+        await fetchFriendsAndRequests(currentUser.username, currentUser.token);
     } else {
-        return response.text();  // Otherwise, parse as plain text
+        console.log("No user is logged in");
     }
-}).then(body => {
-    currentUser = body.username;
-    document.getElementById("left-panel-header").textContent = `${body.username}'s Friends`;
-    fetch(`http://localhost:3000/get-friends?username=${body["username"]}`, {}).then(response => {
-        if (response.ok && response.headers.get("Content-Type")?.includes("application/json")) {
-            return response.json();  // Parse JSON if content type is JSON
-        } else {
-            return response.text();  // Otherwise, parse as plain text
-        }
-    }).then(friendsBody => {
-        console.log(friendsBody);
-        for (let friend of friendsBody.friends) {
-            friends.push(friend);
-            addFriendToPanel(friend);
-        }
-
-    }).catch(error => {
-        console.log(error);
-    });
-
-    fetch(`http://localhost:3000/get-friend-requests?username=${body["username"]}`, {}).then(response => {
-        if (response.ok && response.headers.get("Content-Type")?.includes("application/json")) {
-            return response.json();
-        } else {
-            return response.text();
-        }
-    }).then(friendRequestsBody => {
-        for (let friendRequest of friendRequestsBody.friends) {
-            friendRequests.push(friendRequest);
-            addFriendRequestToMainBody(friendRequest);
-        }
-    }).catch(error => {
-        console.log(error);
-    });
-
-}).catch(error => {
-    console.log(error);
 });
+
+async function fetchFriendsAndRequests(username, token) {
+    try {
+        let friendsResponse = await fetch(`http://localhost:3000/get-friends?username=${username}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        if (friendsResponse.ok) {
+            let friendsBody = await friendsResponse.json();
+            for (let friend of friendsBody.friends) {
+                friends.push(friend);
+                addFriendToPanel(friend);
+            }
+        } else {
+            console.log("Failed to fetch friends");
+        }
+
+        let requestsResponse = await fetch(`http://localhost:3000/get-friend-requests?username=${username}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        if (requestsResponse.ok) {
+            let friendRequestsBody = await requestsResponse.json();
+            for (let friendRequest of friendRequestsBody.friends) {
+                friendRequests.push(friendRequest);
+                addFriendRequestToMainBody(friendRequest);
+            }
+        } else {
+            console.log("Failed to fetch friend requests");
+        }
+    } catch (error) {
+        console.log(error);
+    }
+}

@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS Users (
     bio VARCHAR(190),
     status VARCHAR(32),
     birthday DATE,
-    token VARCHAR(32) DEFAULT ''
+    token VARCHAR(64) DEFAULT ''
 
 );
 
