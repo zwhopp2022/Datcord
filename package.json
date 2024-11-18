@@ -8,7 +8,7 @@
     "pg": "^8.13.1"
   },
   "scripts": {
-    "start": "cd app && node server.js",
+    "start": "cd app && node apiServer.js",
     "setup": "psql -U postgres -f sql/setup.sql"
   }
 }
