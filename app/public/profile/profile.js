@@ -102,6 +102,14 @@ async function saveProfileData() {
             throw new Error(errorData.message || 'Error saving profile data');
         }
 
+        // Update localStorage with new username if it was changed
+        if (updatedUser.updatedUsername !== currentUser.username) {
+            localStorage.setItem('currentUser', JSON.stringify({
+                username: updatedUser.updatedUsername,
+                token: currentUser.token
+            }));
+        }
+
         showMessage("Profile updated successfully!", "success");
         document.getElementById("new-password").value = '';
         document.getElementById("confirm-password").value = '';

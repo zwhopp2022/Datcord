@@ -29,7 +29,7 @@ let authorize = async (req, res, next) => {
         return next();
     }
     let token = req.headers['authorization']?.split(' ')[1];
-    if (token === undefined || !(await searchToken(token))) {
+    if (token === undefined || await searchToken(token)) {
         console.log("not allowed");
         return res.status(403).send("Not allowed");
     }
@@ -363,7 +363,7 @@ app.post("/login", async (req, res) => {
         let token = makeToken();
         let hashedToken = await hashItem(token);
         saveToken(username, hashedToken);
-        return res.status(200).cookie("token", token, cookieOptions).json({}).send();
+        return res.status(200).cookie("token", token, cookieOptions).json({ "token": token }).send();
     } else {
         return res.json({"error": "Missing login properties"});
     }

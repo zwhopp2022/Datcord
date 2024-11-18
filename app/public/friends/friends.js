@@ -253,10 +253,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 async function fetchFriendsAndRequests(username, token) {
+    if (!token) {
+        console.error("No authentication token available");
+        return;
+    }
+
     try {
         let friendsResponse = await fetch(`http://localhost:3000/get-friends?username=${username}`, {
             headers: {
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
             }
         });
         if (friendsResponse.ok) {
@@ -266,12 +272,13 @@ async function fetchFriendsAndRequests(username, token) {
                 addFriendToPanel(friend);
             }
         } else {
-            console.log("Failed to fetch friends");
+            console.log("Failed to fetch friends:", await friendsResponse.text());
         }
 
         let requestsResponse = await fetch(`http://localhost:3000/get-friend-requests?username=${username}`, {
             headers: {
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
             }
         });
         if (requestsResponse.ok) {
@@ -281,9 +288,9 @@ async function fetchFriendsAndRequests(username, token) {
                 addFriendRequestToMainBody(friendRequest);
             }
         } else {
-            console.log("Failed to fetch friend requests");
+            console.log("Failed to fetch friend requests:", await requestsResponse.text());
         }
     } catch (error) {
-        console.log(error);
+        console.log("Error fetching friends data:", error);
     }
 }
