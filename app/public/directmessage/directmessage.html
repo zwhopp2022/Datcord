@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Demo</title>
-  <link rel="stylesheet" href="directmessage.css">
+  <link rel="stylesheet" href="directmessage/directmessage.css">
 </head>
 <body>
 
@@ -17,15 +17,10 @@
             <button id="send-button">Send</button>
         </div>
     </div>
-  <!-- <input id="input">
-  <button id="send">Send</button>
-  <div id="messages"></div> -->
 
-  <!-- MUST INCLUDE SOCKET LIBRARY HERE -->
-  <!-- REMEMBER TO COPY THIS FROM socket.io's node_modules INTO public -->
-  <!-- <script src="/socket.io/socket.io.js"></script> -->
+  <script src="directmessage/socket.io.js"></script>
 
-  <!-- <script>
+  <script>
     // extract room ID from URL
     // if we did server side rendering, server could embed it in the JS for us
     let pathParts = window.location.pathname.split("/");
@@ -38,6 +33,7 @@
     }
 
     let socket = io();
+
     // WARNING: socket.connected will NOT be true immediately
     // if you try to immediately emit an event
     // it'll wait until it's connected, then send - that's fine
@@ -49,9 +45,9 @@
     // you can register an event listener for the connected event:
     socket.on("connect", () => { console.log("I am connected", socket.id); });
 
-    let button = document.getElementById("send");
-    let input = document.getElementById("input");
-    let messagesDiv = document.getElementById("messages");
+    let button = document.getElementById("send-button");
+    let input = document.getElementById("message-input");
+    let messagesDiv = document.getElementById("chat-container");
 
     button.addEventListener("click", () => {
       let message = input.value;
@@ -71,6 +67,6 @@
       console.log("Received message:", data);
       appendMessage(data);
     });
-  </script> -->
+  </script>
 </body>
 </html>

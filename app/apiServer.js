@@ -4,7 +4,14 @@ const bcrypt = require('bcrypt');
 const cookieParser = require("cookie-parser");
 const cors = require('cors');
 let crypto = require("crypto");
+let { Server } = require("socket.io");
+let http = require("http");
+const axios = require("axios");
+const path = require("path");
+
+
 const app = express();
+
 
 const port = 3000;
 const hostname = "localhost";
@@ -12,6 +19,8 @@ const hostname = "localhost";
 const env = require("../appsettings.local.json");
 const Pool = pg.Pool;
 const pool = new Pool(env); 
+let server = http.createServer(app);
+let io = new Server(server);
 
 app.use(express.static("public"));
 app.use(express.json());
@@ -23,7 +32,7 @@ app.use(cors({
   }));
 
 let authorize = async (req, res, next) => {
-    let noVerificationPaths = ["/add-user", "/login"];
+    let noVerificationPaths = ["/add-user", "/login", "/chat", "/create"];
     console.log(req.path);
     if (noVerificationPaths.includes(req.path)) {
         return next();
@@ -557,7 +566,127 @@ app.post('/accept-friend-request', async (req, res) => {
 });
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+let rooms = {};
+
+function generateRoomCode() {
+  let characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  let result = "";
+  for (let i = 0; i < 4; i++) {
+    result += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  return result;
+}
+
+function printRooms() {
+  for (let [roomId, sockets] of Object.entries(rooms)) {
+    console.log(roomId);
+    for (let [socketId, socket] of Object.entries(sockets)) {
+      console.log(`\t${socketId}`);
+    }
+  }
+}
+
+app.post("/create", (req, res) => {
+  let roomId = generateRoomCode();
+  rooms[roomId] = {};
+  return res.json({ roomId });
+});
+
+app.get("/chat", (req, res) => {
+  let roomId = req.query.roomId;
+  console.log(roomId);
+  if (!rooms.hasOwnProperty(roomId)) {
+    return res.status(404).send();
+  }
+  console.log("Sending room", roomId);
+  res.sendFile(path.resolve(__dirname, 'public', 'directmessage', 'directmessage.html')); 
+});
+
+// if you need to do things like associate a socket with a logged in user, see
+// https://socket.io/how-to/deal-with-cookies
+// to see how you can fetch application cookies from the socket
+
+io.on("connection", (socket) => {
+  console.log(`Socket ${socket.id} connected`);
+
+  let url = socket.handshake.headers.referer;
+  let pathParts = url.split("/");
+  let roomId = pathParts[pathParts.length - 1];
+  console.log(pathParts, roomId);
+
+  if (!rooms.hasOwnProperty(roomId)) {
+    return;
+  }
+
+  // add socket object to room so other sockets in same room
+  // can send messages to it later
+  rooms[roomId][socket.id] = socket;
+
+  /* MUST REGISTER socket.on(event) listener FOR EVERY event CLIENT CAN SEND */
+
+  socket.on("disconnect", () => {
+    console.log(`Socket ${socket.id} disconnected`);
+    delete rooms[roomId][socket.id];
+  });
+
+  socket.on("foo", ({ message }) => {
+    // we still have a reference to the roomId defined above
+    // b/c this function is defined inside the outer function
+    console.log(`Socket ${socket.id} sent message: ${message}, ${roomId}`);
+    console.log("Broadcasting message to other sockets");
+
+    // this would send the message to all other sockets
+    // but we want to only send it to other sockets in this room
+    // socket.broadcast.emit("message", message);
+
+    for (let otherSocket of Object.values(rooms[roomId])) {
+      // don't need to send same message back to socket
+      // socket.broadcast.emit automatically skips current socket
+      // but since we're doing this manually, we need to do it ourselves
+      if (otherSocket.id === socket.id) {
+        continue;
+      }
+      console.log(`Sending message ${message} to socket ${otherSocket.id}`);
+      otherSocket.emit("bar", message);
+    }
+  });
+
+  socket.on("hello", (data) => {
+    console.log(data);
+  });
+});
+
+
 //  server startup
-app.listen(port, hostname, () => {
+server.listen(port, hostname, () => {
     console.log(`Listening at: http://${hostname}:${port}`);
 });
