@@ -2,17 +2,38 @@
 let pathParts = window.location.pathname.split("/");
 let roomId = pathParts[pathParts.length - 1];
 
+console.log("Current Room ID:", roomId); // Debug log for room ID
+
 function appendMessage(message) {
     let item = document.createElement("div");
     item.textContent = message;
     messagesDiv.appendChild(item);
 }
 
-let socket = io();
+// Improved socket connection with explicit room parameter
+let socket = io('/', {
+    query: { roomId: roomId }
+});
 
-// WARNING: socket.connected will NOT be true immediately
+// Extensive connection logging
 socket.on("connect", () => { 
     console.log("Connected to server", socket.id); 
+    console.log("Connection query:", socket.io.opts.query);
+});
+
+// Log any connection errors
+socket.on("connect_error", (error) => {
+    console.error("Connection Error:", error);
+});
+
+// Broader message event logging
+socket.on("messageBroadcast", (data) => {
+    console.log("Full Broadcast Received:", data);
+    console.log("Received message type:", typeof data);
+    
+    // Handle different possible data formats
+    const message = typeof data === 'object' ? data.message : data;
+    appendMessage(message);
 });
 
 let button = document.getElementById("send-button");
@@ -24,16 +45,29 @@ button.addEventListener("click", () => {
     if (message === "") {
         return;
     }
-    console.log("Sending message:", message);
-    // socket.emit can send a string, object, array, etc.
-    socket.emit("foo", { message });
-    // need to append its own message, as it won't receive its own event
+    
+    console.log("Attempting to send message:", message);
+    console.log("Current socket connected:", socket.connected);
+    
+    // Try different emission formats
+    socket.emit("messageBroadcast", { 
+        message: message, 
+        roomId: roomId 
+    });
+    
+    // Fallback emission
+    socket.emit("messageBroadcast", message);
+    
+    // Append sender's own message
     appendMessage(message);
+    
     input.value = ''; // Clear input after sending
 });
 
-/* MUST REGISTER socket.on(event) listener FOR EVERY event SERVER CAN SEND */
-socket.on("bar", function(data) {
-    console.log("Received message:", data);
-    appendMessage(data);
+// Debugging socket state
+socket.on("connect", () => {
+    console.log("Socket state after connection:", {
+        connected: socket.connected,
+        id: socket.id
+    });
 });

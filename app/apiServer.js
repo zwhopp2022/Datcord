@@ -33,7 +33,6 @@ app.use(cors({
 
 let authorize = async (req, res, next) => {
     let noVerificationPaths = ["/add-user", "/login", "/chat", "/create"];
-    console.log(req.path);
     if (noVerificationPaths.includes(req.path)) {
         return next();
     }
@@ -658,9 +657,8 @@ io.on("connection", (socket) => {
     delete rooms[roomId][socket.id];
   });
 
-  socket.on("foo", ({ message }) => {
-    // we still have a reference to the roomId defined above
-    // b/c this function is defined inside the outer function
+  socket.on("messageBroadcast", ({ message }) => {
+
     console.log(`Socket ${socket.id} sent message: ${message}, ${roomId}`);
     console.log("Broadcasting message to other sockets");
 
@@ -676,7 +674,7 @@ io.on("connection", (socket) => {
         continue;
       }
       console.log(`Sending message ${message} to socket ${otherSocket.id}`);
-      otherSocket.emit("bar", message);
+      otherSocket.emit("messageBroadcast", message);
     }
   });
 
