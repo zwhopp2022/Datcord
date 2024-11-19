@@ -3,12 +3,17 @@ const app = express();
 const path = require("path");
 const cors = require('cors');
 const axios = require("axios");
+const { Server } = require("socket.io");
+const http = require("http");
 
 const port = 3001;
 const hostname = "localhost";
 
+const server = http.createServer(app);
+const io = new Server(server);
+
 app.use(cors({
-  origin: 'http://localhost:3000',  // Allow requests from this specific origin
+  origin: 'http://localhost:3000',
   credentials: true
 }));
 
@@ -48,7 +53,15 @@ app.get('/chat', async (req, res) => {
   }
 });
 
-//  server startup
-app.listen(port, hostname, () => {
+io.on("connection", (socket) => {
+  console.log(`Socket ${socket.id} connected to main server`);
+  
+  socket.on("disconnect", () => {
+    console.log(`Socket ${socket.id} disconnected from main server`);
+  });
+});
+
+// Change this line from app.listen to server.listen
+server.listen(port, hostname, () => {
   console.log(`Listening at: http://${hostname}:${port}`);
 });
