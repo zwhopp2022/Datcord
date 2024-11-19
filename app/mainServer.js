@@ -33,6 +33,10 @@ app.get('/register', (req, res) => {
   res.sendFile(path.resolve(__dirname, 'public', 'register', 'register.html')); 
 });
 
+app.get('/chat', (req, res) => {
+  res.sendFile(path.resolve(__dirname, 'public', 'directmessage', 'directmessage.html')); 
+});
+
 //  server startup
 app.listen(port, hostname, () => {
   console.log(`Listening at: http://${hostname}:${port}`);
