@@ -10,7 +10,13 @@ const port = 3001;
 const hostname = "localhost";
 
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+    cors: {
+        origin: "http://localhost:3000",
+        methods: ["GET", "POST"],
+        credentials: true
+    }
+});
 
 app.use(cors({
   origin: 'http://localhost:3000',
@@ -53,15 +59,43 @@ app.get('/chat', async (req, res) => {
   }
 });
 
+let rooms = {};
+
 io.on("connection", (socket) => {
-  console.log(`Socket ${socket.id} connected to main server`);
-  
-  socket.on("disconnect", () => {
-    console.log(`Socket ${socket.id} disconnected from main server`);
-  });
+    console.log(`Socket ${socket.id} connected`);
+    
+    let roomId = socket.handshake.query.roomId;
+    console.log("Room ID from query:", roomId);
+
+    
+    if (!rooms[roomId]) {
+        rooms[roomId] = {};
+    }
+
+    rooms[roomId][socket.id] = socket;
+
+    socket.on("messageBroadcast", (data) => {
+        console.log(`Broadcasting message in room ${roomId}:`, data);
+        
+        Object.values(rooms[roomId]).forEach(clientSocket => {
+            if (clientSocket.id !== socket.id) {
+                clientSocket.emit("messageBroadcast", data);
+            }
+        });
+    });
+
+    socket.on("disconnect", () => {
+        console.log(`Socket ${socket.id} disconnected from room ${roomId}`);
+        if (rooms[roomId]) {
+            delete rooms[roomId][socket.id];
+            // Clean up empty rooms
+            if (Object.keys(rooms[roomId]).length === 0) {
+                delete rooms[roomId];
+            }
+        }
+    });
 });
 
-// Change this line from app.listen to server.listen
 server.listen(port, hostname, () => {
   console.log(`Listening at: http://${hostname}:${port}`);
 });

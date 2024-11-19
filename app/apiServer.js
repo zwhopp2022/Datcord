@@ -636,11 +636,9 @@ app.get("/chat", (req, res) => {
 
 io.on("connection", (socket) => {
   console.log(`Socket ${socket.id} connected`);
-
-  let url = socket.handshake.headers.referer;
-  let pathParts = url.split("/");
-  let roomId = pathParts[pathParts.length - 1];
-  console.log(pathParts, roomId);
+  
+  let roomId = socket.handshake.query.roomId;
+  console.log("Room ID from query:", roomId);
 
   if (!rooms.hasOwnProperty(roomId)) {
     return;
@@ -657,24 +655,18 @@ io.on("connection", (socket) => {
     delete rooms[roomId][socket.id];
   });
 
-  socket.on("messageBroadcast", ({ message }) => {
-
-    console.log(`Socket ${socket.id} sent message: ${message}, ${roomId}`);
-    console.log("Broadcasting message to other sockets");
-
-    // this would send the message to all other sockets
-    // but we want to only send it to other sockets in this room
-    // socket.broadcast.emit("message", message);
+  socket.on("messageBroadcast", (data) => {
+    const { message, username } = data;
+    
+    console.log(`Socket ${socket.id} (${username}) sent message: ${message} in room: ${roomId}`);
+    console.log("Broadcasting message to other sockets in room");
 
     for (let otherSocket of Object.values(rooms[roomId])) {
-      // don't need to send same message back to socket
-      // socket.broadcast.emit automatically skips current socket
-      // but since we're doing this manually, we need to do it ourselves
-      if (otherSocket.id === socket.id) {
-        continue;
-      }
-      console.log(`Sending message ${message} to socket ${otherSocket.id}`);
-      otherSocket.emit("messageBroadcast", message);
+        if (otherSocket.id === socket.id) {
+            continue;
+        }
+        console.log(`Sending message ${message} from ${username} to socket ${otherSocket.id}`);
+        otherSocket.emit("messageBroadcast", { message, username });
     }
   });
 

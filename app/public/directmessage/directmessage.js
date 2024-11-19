@@ -1,39 +1,31 @@
-// extract room ID from URL
-let pathParts = window.location.pathname.split("/");
-let roomId = pathParts[pathParts.length - 1];
+let urlParams = new URLSearchParams(window.location.search);
+let roomId = urlParams.get('roomId');
 
-console.log("Current Room ID:", roomId); // Debug log for room ID
+console.log("Current Room ID:", roomId);
 
-function appendMessage(message) {
+function appendMessage(username, message) {
     let item = document.createElement("div");
-    item.textContent = message;
+    item.textContent = `${username}: ${message}`;
     messagesDiv.appendChild(item);
 }
 
-// Improved socket connection with explicit room parameter
-let socket = io('/', {
+let socket = io('http://localhost:3001', {
     query: { roomId: roomId }
 });
 
-// Extensive connection logging
 socket.on("connect", () => { 
     console.log("Connected to server", socket.id); 
     console.log("Connection query:", socket.io.opts.query);
 });
 
-// Log any connection errors
 socket.on("connect_error", (error) => {
     console.error("Connection Error:", error);
 });
 
-// Broader message event logging
 socket.on("messageBroadcast", (data) => {
     console.log("Full Broadcast Received:", data);
-    console.log("Received message type:", typeof data);
-    
-    // Handle different possible data formats
-    const message = typeof data === 'object' ? data.message : data;
-    appendMessage(message);
+    const { username, message } = data;
+    appendMessage(username, message);
 });
 
 let button = document.getElementById("send-button");
@@ -42,29 +34,31 @@ let messagesDiv = document.getElementById("chat-container");
 
 button.addEventListener("click", () => {
     let message = input.value;
-    if (message === "") {
+    if (message.trim() === "") {
         return;
     }
     
-    console.log("Attempting to send message:", message);
-    console.log("Current socket connected:", socket.connected);
+    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    const username = currentUser ? currentUser.username : 'Anonymous';
     
-    // Try different emission formats
-    socket.emit("messageBroadcast", { 
-        message: message, 
-        roomId: roomId 
+    console.log("Attempting to send message:", message);
+    
+    socket.emit("messageBroadcast", {
+        message: message,
+        username: username,
+        roomId: roomId
     });
     
-    // Fallback emission
-    socket.emit("messageBroadcast", message);
-    
-    // Append sender's own message
-    appendMessage(message);
-    
-    input.value = ''; // Clear input after sending
+    appendMessage(username, message);
+    input.value = "";
 });
 
-// Debugging socket state
+input.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") {
+        button.click();
+    }
+});
+
 socket.on("connect", () => {
     console.log("Socket state after connection:", {
         connected: socket.connected,
