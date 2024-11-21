@@ -79,6 +79,16 @@ async function searchToken(token) {
     }
 }
 
+async function searchRoom(code) {
+    try {
+        let result = await pool.query(`SELECT R.code FROM Rooms R WHERE R.code = $1`, [code]);
+        return result.rows.length > 0; 
+    } catch (error) {
+        console.log(`Error searching for room code: ${error}`);
+        return false;
+    }
+}
+
 async function searchUserHelper(username) {
     if (username) {
         return pool.query(`SELECT DISTINCT U.username, U.bio, U.status, U.status, U.birthday FROM Users U WHERE U.username = $1`, [username])
@@ -600,11 +610,14 @@ app.post('/accept-friend-request', async (req, res) => {
 
 let rooms = {};
 
-function generateRoomCode() {
+async function generateRoomCode() {
   let characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   let result = "";
   for (let i = 0; i < 4; i++) {
     result += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  if (await searchRoom(result)) { // if this code exists we need to make a unique one
+    return generateRoomCode();
   }
   return result;
 }
@@ -680,7 +693,7 @@ io.on("connection", (socket) => {
 });
 
 function storeMessage(message, username, roomId) {
-    
+
 }
 
 
