@@ -38,8 +38,7 @@ CREATE TABLE IF NOT EXISTS Messages (
     sentMessage VARCHAR(1000),
     sentBy VARCHAR(16),
     roomCode VARCHAR(4) NOT NULL,
-    FOREIGN KEY (roomCode) REFERENCES Rooms(code),
-    FOREIGN KEY (sentBy) REFERENCES Users(username)
+    FOREIGN KEY (roomCode) REFERENCES Rooms(code)
 );
 
 -- making sure there is a single row in database per pair
