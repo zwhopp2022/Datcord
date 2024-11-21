@@ -16,7 +16,7 @@ const app = express();
 const port = 3000;
 const hostname = "localhost";
 
-const env = require("../appsettings.json");
+const env = require("../appsettings.local.json");
 const Pool = pg.Pool;
 const pool = new Pool(env); 
 let server = http.createServer(app);
@@ -32,11 +32,12 @@ app.use(cors({
   }));
 
 let authorize = async (req, res, next) => {
-    let noVerificationPaths = ["/add-user", "/login", "/chat", "/create"];
+    console.log(req.path);
+    let noVerificationPaths = ["/add-user", "/login", "register", "/chat", "/create"];
     if (noVerificationPaths.includes(req.path)) {
         return next();
     }
-    let token = req.headers['authorization']?.split(' ')[1];
+    let { token } = req.cookies;
     if (token === undefined || await searchToken(token)) {
         console.log("not allowed");
         return res.status(403).send("Not allowed");
@@ -52,7 +53,7 @@ let cookieOptions = {
 };
 
 function makeToken() {
-    return crypto.randomBytes(16).toString("hex");
+    return crypto.randomBytes(32).toString("hex");
 }
 
 function saveToken(username, hashedToken) {
@@ -400,6 +401,7 @@ app.get("/search-user", async (req, res) => {
 // the id of the user adding as a friend (as userIdTwo)
 app.post('/add-friend', async (req, res) => {
     let body = req.body;
+    console.log(req.body);
     if (checkFriendAttributes(body)) {
         if (body.hasOwnProperty("sentBy") && (body["sentBy"] === body["usernameOne"] || body["sentBy"] === body["usernameTwo"])) {
             if (await validateFriendAttributes(body)) {
@@ -676,6 +678,10 @@ io.on("connection", (socket) => {
     console.log(data);
   });
 });
+
+function storeMessage(message, username, roomId) {
+    
+}
 
 
 //  server startup

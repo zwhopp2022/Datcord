@@ -244,7 +244,7 @@ function addFriendRequestToMainBody(username) {
 document.addEventListener("DOMContentLoaded", async () => {
     let storedUser = localStorage.getItem('currentUser');
     if (storedUser) {
-        let currentUser = JSON.parse(storedUser);
+        currentUser = JSON.parse(storedUser);
         document.getElementById("left-panel-header").textContent = `${currentUser.username}'s Friends`;
         await fetchFriendsAndRequests(currentUser.username, currentUser.token);
     } else {

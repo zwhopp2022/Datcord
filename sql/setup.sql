@@ -29,6 +29,18 @@ CREATE TABLE IF NOT EXISTS Friends (
     CHECK (usernameOne <> usernameTwo)
 );
 
+CREATE TABLE IF NOT EXISTS Rooms (
+    code VARCHAR(4) PRIMARY KEY
+);
+
+CREATE TABLE IF NOT EXISTS Messages (
+    id SERIAL PRIMARY KEY,
+    sentMessage VARCHAR(1000),
+    sentBy VARCHAR(16),
+    roomCode VARCHAR(4) NOT NULL,
+    FOREIGN KEY (roomCode) REFERENCES Rooms(code)
+);
+
 -- making sure there is a single row in database per pair
 -- e.g. id      usernameOne         usernameTwo
 --      1       userA               userB
