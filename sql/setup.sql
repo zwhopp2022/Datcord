@@ -1,8 +1,8 @@
 CREATE DATABASE datcord;
 
 \c datcord
-DROP TABLE Users;
-DROP TABLE Friends;
+DROP TABLE Users CASCADE;
+DROP TABLE Friends CASCADE;
 
 
 -- table for Users 
@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS Users (
     bio VARCHAR(190),
     status VARCHAR(32),
     birthday DATE,
-    token VARCHAR(64) DEFAULT ''
+    token VARCHAR(72) DEFAULT ''
 
 );
 
