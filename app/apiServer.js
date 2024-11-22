@@ -89,6 +89,17 @@ async function searchRoom(code) {
     }
 }
 
+async function saveRoom(code) {
+    try {
+        await pool.query(
+            `INSERT INTO Rooms (code) VALUES($1)`,
+            [code]
+        )
+    } catch (error) {
+        console.log(`Error inserting room into database: ${error}`);
+    }
+}
+
 async function searchUserHelper(username) {
     if (username) {
         return pool.query(`SELECT DISTINCT U.username, U.bio, U.status, U.status, U.birthday FROM Users U WHERE U.username = $1`, [username])
@@ -384,7 +395,7 @@ app.post("/login", async (req, res) => {
         let token = makeToken();
         let hashedToken = await hashItem(token);
         saveToken(username, hashedToken);
-        return res.status(200).cookie("token", token, cookieOptions).json({ "token": token }).send();
+        return res.status(200).cookie("token", token, cookieOptions).json({}).send();
     } else {
         return res.json({"error": "Missing login properties"});
     }
@@ -619,6 +630,7 @@ async function generateRoomCode() {
   if (await searchRoom(result)) { // if this code exists we need to make a unique one
     return generateRoomCode();
   }
+
   return result;
 }
 
@@ -633,6 +645,7 @@ function printRooms() {
 
 app.post("/create", (req, res) => {
   let roomId = generateRoomCode();
+  saveRoom(roomId);
   rooms[roomId] = {};
   return res.json({ roomId });
 });
@@ -640,7 +653,7 @@ app.post("/create", (req, res) => {
 app.get("/chat", (req, res) => {
   let roomId = req.query.roomId;
   console.log(roomId);
-  if (!rooms.hasOwnProperty(roomId)) {
+  if (!searchRoom(roomId)) {
     return res.status(404).send();
   }
   console.log("Sending room", roomId);
@@ -657,7 +670,7 @@ io.on("connection", (socket) => {
   let roomId = socket.handshake.query.roomId;
   console.log("Room ID from query:", roomId);
 
-  if (!rooms.hasOwnProperty(roomId)) {
+  if (!searchRoom(roomId)) {
     return;
   }
 

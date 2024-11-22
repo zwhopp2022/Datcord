@@ -15,13 +15,14 @@ form.addEventListener("submit", (event) => {
         headers: {
             "Content-Type": "application/json"
         },
+        credentials: "include",
         body: JSON.stringify({username: userVal, password: passVal}),
     }).then(response => {
         response.json().then((body) => {
             if (response.ok) {
                 messageContainer.style.color = "green";
                 messageContainer.textContent = "Logged in!";
-                localStorage.setItem('currentUser', JSON.stringify({ username: userVal, token: body.token }));
+                //localStorage.setItem('currentUser', JSON.stringify({ username: userVal, token: body.token }));
                 window.location.href = '/home';
             } else if (response.status === 400) {
                 messageContainer.style.color = "red";
