@@ -1,41 +1,64 @@
 document.addEventListener("DOMContentLoaded", async () => {
-  await populateProfileFields();
+    let currentUser = {};
+    currentUser.username = getCookie("username");
+    currentUser.token = getCookie("token");
+    if (currentUser) {
+        await populateProfileFields(currentUser.username, currentUser.token);
+    } else {
+        console.log("No user is logged in");
+    }
 
-  document.getElementById("save-btn").addEventListener("click", saveProfileData);
+    document.getElementById("save-btn").addEventListener("click", saveProfileData);
 });
 
-async function fetchUser(username) {
-  try {
-      const response = await fetch(`http://localhost:3000/get-user?username=${username}`);
-      if (!response.ok) throw new Error('Failed to fetch current user data');
-      return await response.json();
-  } catch (error) {
-      showMessage('Error fetching user data', 'error');
-      return null;
-  }
+function getCookie(name) {
+    const cookies = document.cookie.split("; ");
+    for (let cookie of cookies) {
+        const [key, value] = cookie.split("=");
+        if (key === name) {
+            return decodeURIComponent(value);
+        }
+    }
+    return null;
 }
 
-async function populateProfileFields() {
-  const username = "johndoe"; // placeholder
-  const currentUser = await fetchUser(username);
+async function fetchUser(username, token) {
+    try {
+        const response = await fetch(`http://localhost:3000/get-user?username=${username}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                "Content-Type": "application/json"
+            },
+            credentials: 'include'  // Ensures cookies are sent with the request
+        });
+        if (!response.ok) throw new Error('Failed to fetch current user data');
+        return await response.json();
+    } catch (error) {
+        showMessage('Error fetching user data', 'error');
+        return null;
+    }
+}
 
-  if (!currentUser) {
-      showMessage('Unable to load profile data', 'error');
-      return;
-  }
+async function populateProfileFields(username, token) {
+    const currentUser = await fetchUser(username, token);
 
-  document.getElementById("username").value = currentUser.username || '';
-  document.getElementById("bio").value = currentUser.bio || '';
-  document.getElementById("status").value = currentUser.status || '';
-  
-  if (currentUser.birthday) {
-      const date = new Date(currentUser.birthday);
-      document.getElementById("birthday").value = [
-          date.getFullYear(),
-          (date.getMonth() + 1).toString().padStart(2, '0'),
-          date.getDate().toString().padStart(2, '0')
-      ].join('-');
-  }
+    if (!currentUser) {
+        showMessage('Unable to load profile data', 'error');
+        return;
+    }
+
+    document.getElementById("username").value = currentUser.username || '';
+    document.getElementById("bio").value = currentUser.bio || '';
+    document.getElementById("status").value = currentUser.status || '';
+
+    if (currentUser.birthday) {
+        const date = new Date(currentUser.birthday);
+        document.getElementById("birthday").value = [
+            date.getFullYear(),
+            (date.getMonth() + 1).toString().padStart(2, '0'),
+            date.getDate().toString().padStart(2, '0')
+        ].join('-');
+    }
 }
 
 function showMessage(message, type) {
@@ -51,17 +74,17 @@ function showMessage(message, type) {
 }
 
 async function saveProfileData() {
-    const username = "johndoe"; // current username (placeholder)
-    const currentUser = await fetchUser(username);
+    let currentUser = {};
+    currentUser.username = getCookie("username");
+    currentUser.token = getCookie("token");
     if (!currentUser) {
-        showMessage("Failed to fetch user data", "error");
+        showMessage("No user is logged in", "error");
         return;
     }
 
     const newPassword = document.getElementById("new-password").value;
     const confirmPassword = document.getElementById("confirm-password").value;
 
-    // Check if passwords match if a new password was entered
     if (newPassword || confirmPassword) {
         if (newPassword !== confirmPassword) {
             showMessage("New passwords do not match!", "error");
@@ -69,34 +92,39 @@ async function saveProfileData() {
         }
     }
 
-    // create an updated user object with the correct format
     const updatedUser = {
-        username: username, // original username for reference
+        username: currentUser.username,
         updatedUsername: document.getElementById("username").value || currentUser.username,
-        updatedPassword: newPassword || null,  // Only send password if it's being changed
+        updatedPassword: newPassword || null,
         updatedBio: document.getElementById("bio").value || currentUser.bio,
         updatedStatus: document.getElementById("status").value || currentUser.status,
-        updatedDate: document.getElementById("birthday").value.split('-') // convert date string to array
+        updatedDate: document.getElementById("birthday").value
     };
 
     try {
         const response = await fetch('http://localhost:3000/modify-user', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentUser.token}`
             },
             credentials: 'include',
             body: JSON.stringify(updatedUser)
         });
-        
+
         if (!response.ok) {
             const errorData = await response.json();
             throw new Error(errorData.message || 'Error saving profile data');
         }
+
+        // Update cookies with new username if it was changed
+        if (updatedUser.updatedUsername !== currentUser.username) {
+            document.cookie = `user=${encodeURIComponent(updatedUser.updatedUsername)}; path=/;`;
+            document.cookie = `token=${encodeURIComponent(currentUser.token)}; path=/;`;
+        }
         
+
         showMessage("Profile updated successfully!", "success");
-        
-        // Clear password fields after successful update
         document.getElementById("new-password").value = '';
         document.getElementById("confirm-password").value = '';
     } catch (error) {

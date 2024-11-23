@@ -7,7 +7,9 @@
     "crypto": "^1.0.1",
     "express": "^4.21.1",
     "node-fetch": "^2.7.0",
-    "pg": "^8.13.1"
+    "pg": "^8.13.1",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1"
   },
   "scripts": {
     "start": "cd app && concurrently \"node mainServer.js\" \"node apiServer.js\"",

@@ -4,14 +4,23 @@ const bcrypt = require('bcrypt');
 const cookieParser = require("cookie-parser");
 const cors = require('cors');
 let crypto = require("crypto");
+let { Server } = require("socket.io");
+let http = require("http");
+const axios = require("axios");
+const path = require("path");
+
+
 const app = express();
+
 
 const port = 3000;
 const hostname = "localhost";
 
 const env = require("../appsettings.json");
 const Pool = pg.Pool;
-const pool = new Pool(env); 
+const pool = new Pool(env);
+let server = http.createServer(app);
+let io = new Server(server);
 
 app.use(express.static("public"));
 app.use(express.json());
@@ -20,17 +29,15 @@ app.use(cookieParser());
 app.use(cors({
     origin: `http://${hostname}:3001`,  // Allow requests from this specific origin
     credentials: true
-  }));
+}));
 
-
-let authorize = (req, res, next) => {
-    let noVerificationPaths = ["/add-user", "/login"];
-    console.log(req.path);
+let authorize = async (req, res, next) => {
+    let noVerificationPaths = ["/", "/add-user", "/login", "register", "/chat", "/create"];
     if (noVerificationPaths.includes(req.path)) {
         return next();
     }
     let { token } = req.cookies;
-    if (token === undefined || !searchToken(token)) {
+    if (token === undefined || await searchToken(token)) {
         console.log("not allowed");
         return res.status(403).send("Not allowed");
     }
@@ -39,7 +46,7 @@ let authorize = (req, res, next) => {
 app.use(authorize);
 
 let cookieOptions = {
-    httpOnly: true, // client js can't access
+    httpOnly: false, // false so that client side js can read cookies
     secure: true, // prevents packet sniffing by using https
     sameSite: "strict", // only include this cookie on requests to the same domain
 };
@@ -61,34 +68,50 @@ function saveToken(username, hashedToken) {
 }
 
 // returns true if a users token is existing in the database
-function searchToken(token) {
-    pool.query(`SELECT U.token FROM Users U`)
-    .then((result) => {
-        let tokens = result.rows.map(row => row.token);
-        for (currToken of tokens) {
-            if (bcrypt.compare(token, currToken)) {
-                return true;
-            }
-        }
+async function searchToken(token) {
+    try {
+        let result = await pool.query(`SELECT U.token FROM Users U WHERE U.token = $1`, [token]);
+        return result.rows.length > 0;
+    } catch (error) {
+        console.log(`Error searching token: ${error}`);
         return false;
-    }).catch((error) => {
+    }
+}
+
+async function searchRoom(code) {
+    try {
+        let result = await pool.query(`SELECT R.code FROM Rooms R WHERE R.code = $1`, [code]);
+        return result.rows.length > 0;
+    } catch (error) {
+        console.log(`Error searching for room code: ${error}`);
         return false;
-    })
+    }
+}
+
+async function saveRoom(code) {
+    try {
+        await pool.query(
+            `INSERT INTO Rooms (code) VALUES($1)`,
+            [code]
+        )
+    } catch (error) {
+        console.log(`Error inserting room into database: ${error}`);
+    }
 }
 
 async function searchUserHelper(username) {
     if (username) {
         return pool.query(`SELECT DISTINCT U.username, U.bio, U.status, U.status, U.birthday FROM Users U WHERE U.username = $1`, [username])
-        .then((result) => {
-            let userObj = result.rows;
-            if (userObj.length == 1) {
-                return true
-            } else {
+            .then((result) => {
+                let userObj = result.rows;
+                if (userObj.length == 1) {
+                    return true
+                } else {
+                    return false
+                }
+            }).catch((error) => {
                 return false
-            }
-        }).catch((error) => {
-            return false
-        });
+            });
     } else {
         return false;
     }
@@ -96,7 +119,7 @@ async function searchUserHelper(username) {
 
 async function hashItem(password) {
     let salt = await bcrypt.genSalt();
-    let hashedItem= await bcrypt.hash(password, salt);
+    let hashedItem = await bcrypt.hash(password, salt);
 
     return hashedItem;
 }
@@ -108,7 +131,7 @@ function checkUserAttributes(body) {
         body.hasOwnProperty("bio") &&
         body.hasOwnProperty("status") &&
         body.hasOwnProperty("date")
-    ) { 
+    ) {
         return true;
     } else {
         return false;
@@ -190,7 +213,7 @@ async function updateFriendsTableUsername(oldUsername, newUsername) {
              WHERE usernameOne = $2`,
             [newUsername, oldUsername]
         );
-        
+
         await pool.query(
             `UPDATE Friends 
              SET usernameTwo = $1 
@@ -204,7 +227,7 @@ async function updateFriendsTableUsername(oldUsername, newUsername) {
              WHERE sentBy = $2`,
             [newUsername, oldUsername]
         );
-        
+
         return true;
     } catch (error) {
         console.error('Error updating friends table:', error);
@@ -267,31 +290,31 @@ app.post("/modify-user", async (req, res) => {
                 query += updates.join(', ');
                 query += ` WHERE username = $${paramCount}`;
                 params.push(req.body["username"]);
-
                 pool.query(query, params)
                     .then(async (result) => {
                         // If username was updated, update Friends table
                         if (body["username"] && body["username"] !== req.body["username"]) {
-                            const friendsUpdated = await updateFriendsTableUsername(req.body["username"], body["username"]);
+                            const friendsUpdated = await updateFriendsTableUsername(req.body["username"], body["updatedUsername"]);
                             if (!friendsUpdated) {
-                                return res.status(400).json({ "message": "failed to update friends relationships" });
+                                return res.status(400).json({ "message": "Failed to update friends relationships" });
                             }
                         }
-                        return res.status(200).json({ "message": "user successfully modified" });
+                        return res.status(200).json({ "message": "User successfully modified" });
                     })
                     .catch((error) => {
-                        return res.status(400).json({ "message": "failed to update user in database" });
+                        return res.status(400).json({ "message": "Failed to update user in database" });
                     });
             } else {
-                return res.status(400).json({ "message": "failed to find user in database" });
+                return res.status(400).json({ "message": "Failed to find user in database" });
             }
         } else {
-            return res.status(500).json({ "error": "misformatted user information" });
+            return res.status(500).json({ "error": "Misformatted user information" });
         }
     } else {
-        return res.status(500).json({ "error": "missing user information" });
+        return res.status(500).json({ "error": "Missing user information" });
     }
 });
+
 // send username, get all information about user
 // in an object
 // NOTE: it is assumed this server is not open to the public,
@@ -300,12 +323,12 @@ app.get("/get-user", async (req, res) => {
     let username = req.query.username;
     if (await searchUserHelper(username)) {
         pool.query(`SELECT DISTINCT U.username, U.hashedPassword, U.bio, U.status, U.birthday FROM Users U WHERE U.username = $1`, [username])
-        .then((result) => {
-            let userObj = result.rows[0];
-            return res.status(200).json(userObj);
-        }).catch((error) => {
-            return res.status(400).json({ "error": "error getting user information" });
-        });
+            .then((result) => {
+                let userObj = result.rows[0];
+                return res.status(200).json(userObj);
+            }).catch((error) => {
+                return res.status(400).json({ "error": "error getting user information" });
+            });
     } else {
         return res.status(400).json({ "error": "user not found" });
     }
@@ -321,7 +344,7 @@ app.post("/add-user", async (req, res) => {
         if (await searchUserHelper(body["username"])) {
             return res.status(400).json({ "message": "user already exists" });
         } else {
-            if (validateUserAttributes(body)) {                
+            if (validateUserAttributes(body)) {
                 let hashedPassword = await hashItem(body["password"]);
                 let status = "chillin on datcord :3";
                 pool.query(
@@ -353,8 +376,9 @@ app.post("/login", async (req, res) => {
         plainPassword = body.password;
 
         if (!searchUserHelper(username)) {
-            return res.status(400).json({"error": "Username or Password incorrect"});
-        } 
+
+            return res.status(400).json({ "error": "Username or Password incorrect" });
+        }
 
         try {
             hash = await getUserPassHash(username);
@@ -365,18 +389,22 @@ app.post("/login", async (req, res) => {
         }
 
         if (!verified) {
-            return res.status(400).json({"error": "Incorrect Username or Password"});
+            return res.status(400).json({ "error": "Incorrect Username or Password" });
         }
 
         let token = makeToken();
         let hashedToken = await hashItem(token);
         saveToken(username, hashedToken);
-        return res.status(200).cookie("token", token, cookieOptions).json({}).send();
+        return res
+            .status(200)
+            .cookie("token", token, cookieOptions)
+            .cookie("username", username, cookieOptions)
+            .json({})
+            .send();
     } else {
-        return res.json({"error": "Missing login properties"});
+        return res.json({ "error": "Missing login properties" });
     }
-}); 
-
+});
 
 // send username, returns bool
 // true if user exists, false if not
@@ -399,6 +427,7 @@ app.get("/search-user", async (req, res) => {
 // the id of the user adding as a friend (as userIdTwo)
 app.post('/add-friend', async (req, res) => {
     let body = req.body;
+    console.log(req.body);
     if (checkFriendAttributes(body)) {
         if (body.hasOwnProperty("sentBy") && (body["sentBy"] === body["usernameOne"] || body["sentBy"] === body["usernameTwo"])) {
             if (await validateFriendAttributes(body)) {
@@ -455,7 +484,7 @@ app.get('/get-friends', async (req, res) => {
             if (await searchUserHelper(username)) {
                 pool.query(
                     `SELECT * FROM Friends WHERE (usernameOne = $1 OR usernameTwo = $1) AND isFriendRequest = FALSE`,
-                     [username]
+                    [username]
                 ).then((result) => {
                     for (let row of result.rows) {
                         if (row.usernameone === username) {
@@ -497,7 +526,7 @@ app.get('/search-friends', async (req, res) => {
                     return res.status(200).json({ "result": false });
                 }).catch((error) => {
                     return res.status(400).json({ "message": "failed to retrieve friends from database" });
-                });   
+                });
             } else {
                 return res.status(400).json({ "message": "username not found in database" });
             }
@@ -517,7 +546,7 @@ app.get('/get-friend-requests', async (req, res) => {
             if (await searchUserHelper(username)) {
                 pool.query(
                     `SELECT * FROM Friends WHERE (usernameOne = $1 OR usernameTwo = $1) AND isFriendRequest = TRUE AND sentBy != $1`,
-                     [username]
+                    [username]
                 ).then((result) => {
                     for (let row of result.rows) {
                         if (row.usernameone === username) {
@@ -566,7 +595,132 @@ app.post('/accept-friend-request', async (req, res) => {
 });
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+let rooms = {};
+
+async function generateRoomCode() {
+    let characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    let result = "";
+    for (let i = 0; i < 4; i++) {
+        result += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    if (await searchRoom(result)) { // if this code exists we need to make a unique one
+        return generateRoomCode();
+    }
+
+    return result;
+}
+
+function printRooms() {
+    for (let [roomId, sockets] of Object.entries(rooms)) {
+        console.log(roomId);
+        for (let [socketId, socket] of Object.entries(sockets)) {
+            console.log(`\t${socketId}`);
+        }
+    }
+}
+
+app.post("/create", (req, res) => {
+    let roomId = generateRoomCode();
+    saveRoom(roomId);
+    rooms[roomId] = {};
+    return res.json({ roomId });
+});
+
+app.get("/chat", (req, res) => {
+    let roomId = req.query.roomId;
+    console.log(roomId);
+    if (!searchRoom(roomId)) {
+        return res.status(404).send();
+    }
+    console.log("Sending room", roomId);
+    res.sendFile(path.resolve(__dirname, 'public', 'directmessage', 'directmessage.html'));
+});
+
+// if you need to do things like associate a socket with a logged in user, see
+// https://socket.io/how-to/deal-with-cookies
+// to see how you can fetch application cookies from the socket
+
+io.on("connection", (socket) => {
+    console.log(`Socket ${socket.id} connected`);
+
+    let roomId = socket.handshake.query.roomId;
+    console.log("Room ID from query:", roomId);
+
+    if (!searchRoom(roomId)) {
+        return;
+    }
+
+    // add socket object to room so other sockets in same room
+    // can send messages to it later
+    rooms[roomId][socket.id] = socket;
+
+    /* MUST REGISTER socket.on(event) listener FOR EVERY event CLIENT CAN SEND */
+
+    socket.on("disconnect", () => {
+        console.log(`Socket ${socket.id} disconnected`);
+        delete rooms[roomId][socket.id];
+    });
+
+    socket.on("messageBroadcast", (data) => {
+        const { message, username } = data;
+
+        console.log(`Socket ${socket.id} (${username}) sent message: ${message} in room: ${roomId}`);
+        console.log("Broadcasting message to other sockets in room");
+
+        for (let otherSocket of Object.values(rooms[roomId])) {
+            if (otherSocket.id === socket.id) {
+                continue;
+            }
+            console.log(`Sending message ${message} from ${username} to socket ${otherSocket.id}`);
+            otherSocket.emit("messageBroadcast", { message, username });
+        }
+    });
+
+    socket.on("hello", (data) => {
+        console.log(data);
+    });
+});
+
+async function storeMessage(message, username, roomId) {
+    try {
+        await pool.query(
+            `INSERT INTO Messages (sentMessage, sentBy, roomCode) VALUES($1, $2, $3)`,
+            [message, username, roomId]
+        )
+    } catch (error) {
+        console.log(`Error inserting message into database: ${error}`);
+    }
+}
+
+
 //  server startup
-app.listen(port, hostname, () => {
+server.listen(port, hostname, () => {
     console.log(`Listening at: http://${hostname}:${port}`);
 });
