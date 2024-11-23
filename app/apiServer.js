@@ -32,7 +32,7 @@ app.use(cors({
 }));
 
 let authorize = async (req, res, next) => {
-    let noVerificationPaths = ["/add-user", "/login", "register", "/chat", "/create"];
+    let noVerificationPaths = ["/", "/add-user", "/login", "register", "/chat", "/create"];
     if (noVerificationPaths.includes(req.path)) {
         return next();
     }
@@ -46,7 +46,7 @@ let authorize = async (req, res, next) => {
 app.use(authorize);
 
 let cookieOptions = {
-    httpOnly: false, // true so that client side js cannot read cookies
+    httpOnly: false, // false so that client side js can read cookies
     secure: true, // prevents packet sniffing by using https
     sameSite: "strict", // only include this cookie on requests to the same domain
 };
