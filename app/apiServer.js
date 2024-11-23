@@ -18,7 +18,7 @@ const hostname = "localhost";
 
 const env = require("../appsettings.local.json");
 const Pool = pg.Pool;
-const pool = new Pool(env); 
+const pool = new Pool(env);
 let server = http.createServer(app);
 let io = new Server(server);
 
@@ -29,7 +29,7 @@ app.use(cookieParser());
 app.use(cors({
     origin: `http://${hostname}:3001`,  // Allow requests from this specific origin
     credentials: true
-  }));
+}));
 
 let authorize = async (req, res, next) => {
     console.log(req.path);
@@ -82,7 +82,7 @@ async function searchToken(token) {
 async function searchRoom(code) {
     try {
         let result = await pool.query(`SELECT R.code FROM Rooms R WHERE R.code = $1`, [code]);
-        return result.rows.length > 0; 
+        return result.rows.length > 0;
     } catch (error) {
         console.log(`Error searching for room code: ${error}`);
         return false;
@@ -103,16 +103,16 @@ async function saveRoom(code) {
 async function searchUserHelper(username) {
     if (username) {
         return pool.query(`SELECT DISTINCT U.username, U.bio, U.status, U.status, U.birthday FROM Users U WHERE U.username = $1`, [username])
-        .then((result) => {
-            let userObj = result.rows;
-            if (userObj.length == 1) {
-                return true
-            } else {
+            .then((result) => {
+                let userObj = result.rows;
+                if (userObj.length == 1) {
+                    return true
+                } else {
+                    return false
+                }
+            }).catch((error) => {
                 return false
-            }
-        }).catch((error) => {
-            return false
-        });
+            });
     } else {
         return false;
     }
@@ -120,7 +120,7 @@ async function searchUserHelper(username) {
 
 async function hashItem(password) {
     let salt = await bcrypt.genSalt();
-    let hashedItem= await bcrypt.hash(password, salt);
+    let hashedItem = await bcrypt.hash(password, salt);
 
     return hashedItem;
 }
@@ -132,15 +132,14 @@ function checkUserAttributes(body) {
         body.hasOwnProperty("bio") &&
         body.hasOwnProperty("status") &&
         body.hasOwnProperty("date")
-    ) { 
+    ) {
         return true;
     } else {
         return false;
     }
 }
 
-function validateUserAttributes(body) 
-{
+function validateUserAttributes(body) {
     console.log(body["date"].length);
     if (
         (body["username"].length > 0 && body["username"].length <= 16) &&
@@ -214,7 +213,7 @@ async function updateFriendsTableUsername(oldUsername, newUsername) {
              WHERE usernameOne = $2`,
             [newUsername, oldUsername]
         );
-        
+
         await pool.query(
             `UPDATE Friends 
              SET usernameTwo = $1 
@@ -228,7 +227,7 @@ async function updateFriendsTableUsername(oldUsername, newUsername) {
              WHERE sentBy = $2`,
             [newUsername, oldUsername]
         );
-        
+
         return true;
     } catch (error) {
         console.error('Error updating friends table:', error);
@@ -324,12 +323,12 @@ app.get("/get-user", async (req, res) => {
     let username = req.query.username;
     if (await searchUserHelper(username)) {
         pool.query(`SELECT DISTINCT U.username, U.hashedPassword, U.bio, U.status, U.birthday FROM Users U WHERE U.username = $1`, [username])
-        .then((result) => {
-            let userObj = result.rows[0];
-            return res.status(200).json(userObj);
-        }).catch((error) => {
-            return res.status(400).json({ "error": "error getting user information" });
-        });
+            .then((result) => {
+                let userObj = result.rows[0];
+                return res.status(200).json(userObj);
+            }).catch((error) => {
+                return res.status(400).json({ "error": "error getting user information" });
+            });
     } else {
         return res.status(400).json({ "error": "user not found" });
     }
@@ -345,7 +344,7 @@ app.post("/add-user", async (req, res) => {
         if (await searchUserHelper(body["username"])) {
             return res.status(400).json({ "message": "user already exists" });
         } else {
-            if (validateUserAttributes(body)) {                
+            if (validateUserAttributes(body)) {
                 let hashedPassword = await hashItem(body["password"]);
                 let status = "chillin on datcord :3";
                 pool.query(
@@ -377,8 +376,8 @@ app.post("/login", async (req, res) => {
         plainPassword = body.password;
 
         if (!searchUserHelper(username)) {
-            return res.status(400).json({"error": "Username or Password incorrect"});
-        } 
+            return res.status(400).json({ "error": "Username or Password incorrect" });
+        }
 
         try {
             hash = await getUserPassHash(username);
@@ -389,7 +388,7 @@ app.post("/login", async (req, res) => {
         }
 
         if (!verified) {
-            return res.status(400).json({"error": "Incorrect Username or Password"});
+            return res.status(400).json({ "error": "Incorrect Username or Password" });
         }
 
         let token = makeToken();
@@ -397,9 +396,9 @@ app.post("/login", async (req, res) => {
         saveToken(username, hashedToken);
         return res.status(200).cookie("token", token, cookieOptions).json({}).send();
     } else {
-        return res.json({"error": "Missing login properties"});
+        return res.json({ "error": "Missing login properties" });
     }
-}); 
+});
 
 // send username, returns bool
 // true if user exists, false if not
@@ -479,7 +478,7 @@ app.get('/get-friends', async (req, res) => {
             if (await searchUserHelper(username)) {
                 pool.query(
                     `SELECT * FROM Friends WHERE (usernameOne = $1 OR usernameTwo = $1) AND isFriendRequest = FALSE`,
-                     [username]
+                    [username]
                 ).then((result) => {
                     for (let row of result.rows) {
                         if (row.usernameone === username) {
@@ -521,7 +520,7 @@ app.get('/search-friends', async (req, res) => {
                     return res.status(200).json({ "result": false });
                 }).catch((error) => {
                     return res.status(400).json({ "message": "failed to retrieve friends from database" });
-                });   
+                });
             } else {
                 return res.status(400).json({ "message": "username not found in database" });
             }
@@ -541,7 +540,7 @@ app.get('/get-friend-requests', async (req, res) => {
             if (await searchUserHelper(username)) {
                 pool.query(
                     `SELECT * FROM Friends WHERE (usernameOne = $1 OR usernameTwo = $1) AND isFriendRequest = TRUE AND sentBy != $1`,
-                     [username]
+                    [username]
                 ).then((result) => {
                     for (let row of result.rows) {
                         if (row.usernameone === username) {
@@ -622,42 +621,42 @@ app.post('/accept-friend-request', async (req, res) => {
 let rooms = {};
 
 async function generateRoomCode() {
-  let characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  let result = "";
-  for (let i = 0; i < 4; i++) {
-    result += characters.charAt(Math.floor(Math.random() * characters.length));
-  }
-  if (await searchRoom(result)) { // if this code exists we need to make a unique one
-    return generateRoomCode();
-  }
+    let characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    let result = "";
+    for (let i = 0; i < 4; i++) {
+        result += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    if (await searchRoom(result)) { // if this code exists we need to make a unique one
+        return generateRoomCode();
+    }
 
-  return result;
+    return result;
 }
 
 function printRooms() {
-  for (let [roomId, sockets] of Object.entries(rooms)) {
-    console.log(roomId);
-    for (let [socketId, socket] of Object.entries(sockets)) {
-      console.log(`\t${socketId}`);
+    for (let [roomId, sockets] of Object.entries(rooms)) {
+        console.log(roomId);
+        for (let [socketId, socket] of Object.entries(sockets)) {
+            console.log(`\t${socketId}`);
+        }
     }
-  }
 }
 
 app.post("/create", (req, res) => {
-  let roomId = generateRoomCode();
-  saveRoom(roomId);
-  rooms[roomId] = {};
-  return res.json({ roomId });
+    let roomId = generateRoomCode();
+    saveRoom(roomId);
+    rooms[roomId] = {};
+    return res.json({ roomId });
 });
 
 app.get("/chat", (req, res) => {
-  let roomId = req.query.roomId;
-  console.log(roomId);
-  if (!searchRoom(roomId)) {
-    return res.status(404).send();
-  }
-  console.log("Sending room", roomId);
-  res.sendFile(path.resolve(__dirname, 'public', 'directmessage', 'directmessage.html')); 
+    let roomId = req.query.roomId;
+    console.log(roomId);
+    if (!searchRoom(roomId)) {
+        return res.status(404).send();
+    }
+    console.log("Sending room", roomId);
+    res.sendFile(path.resolve(__dirname, 'public', 'directmessage', 'directmessage.html'));
 });
 
 // if you need to do things like associate a socket with a logged in user, see
@@ -665,48 +664,55 @@ app.get("/chat", (req, res) => {
 // to see how you can fetch application cookies from the socket
 
 io.on("connection", (socket) => {
-  console.log(`Socket ${socket.id} connected`);
-  
-  let roomId = socket.handshake.query.roomId;
-  console.log("Room ID from query:", roomId);
+    console.log(`Socket ${socket.id} connected`);
 
-  if (!searchRoom(roomId)) {
-    return;
-  }
+    let roomId = socket.handshake.query.roomId;
+    console.log("Room ID from query:", roomId);
 
-  // add socket object to room so other sockets in same room
-  // can send messages to it later
-  rooms[roomId][socket.id] = socket;
-
-  /* MUST REGISTER socket.on(event) listener FOR EVERY event CLIENT CAN SEND */
-
-  socket.on("disconnect", () => {
-    console.log(`Socket ${socket.id} disconnected`);
-    delete rooms[roomId][socket.id];
-  });
-
-  socket.on("messageBroadcast", (data) => {
-    const { message, username } = data;
-    
-    console.log(`Socket ${socket.id} (${username}) sent message: ${message} in room: ${roomId}`);
-    console.log("Broadcasting message to other sockets in room");
-
-    for (let otherSocket of Object.values(rooms[roomId])) {
-        if (otherSocket.id === socket.id) {
-            continue;
-        }
-        console.log(`Sending message ${message} from ${username} to socket ${otherSocket.id}`);
-        otherSocket.emit("messageBroadcast", { message, username });
+    if (!searchRoom(roomId)) {
+        return;
     }
-  });
 
-  socket.on("hello", (data) => {
-    console.log(data);
-  });
+    // add socket object to room so other sockets in same room
+    // can send messages to it later
+    rooms[roomId][socket.id] = socket;
+
+    /* MUST REGISTER socket.on(event) listener FOR EVERY event CLIENT CAN SEND */
+
+    socket.on("disconnect", () => {
+        console.log(`Socket ${socket.id} disconnected`);
+        delete rooms[roomId][socket.id];
+    });
+
+    socket.on("messageBroadcast", (data) => {
+        const { message, username } = data;
+
+        console.log(`Socket ${socket.id} (${username}) sent message: ${message} in room: ${roomId}`);
+        console.log("Broadcasting message to other sockets in room");
+
+        for (let otherSocket of Object.values(rooms[roomId])) {
+            if (otherSocket.id === socket.id) {
+                continue;
+            }
+            console.log(`Sending message ${message} from ${username} to socket ${otherSocket.id}`);
+            otherSocket.emit("messageBroadcast", { message, username });
+        }
+    });
+
+    socket.on("hello", (data) => {
+        console.log(data);
+    });
 });
 
-function storeMessage(message, username, roomId) {
-
+async function storeMessage(message, username, roomId) {
+    try {
+        await pool.query(
+            `INSERT INTO Messages (sentMessage, sentBy, roomCode) VALUES($1, $2, $3)`,
+            [message, username, roomId]
+        )
+    } catch (error) {
+        console.log(`Error inserting message into database: ${error}`);
+    }
 }
 
 
