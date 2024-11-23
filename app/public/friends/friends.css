@@ -20,6 +20,7 @@ body {
     background-color: #1c1c1c;
     padding: 20px;
     border-right: 2px solid #333;
+    margin-left: 80px;
 }
 
 /* Main Content */
@@ -154,4 +155,26 @@ body {
 /* Change color on hover */
 .friend-panel-row .remove-button:hover {
     background-color: #e53935; /* Darker red on hover */
+}
+
+.circular-btn {
+    position: fixed;         /* Fix the button's position on the screen */
+    top: 20px;               /* Position 10px from the top */
+    left: 10px;              /* Position 10px from the left */
+    width: 50px;             /* Set the width */
+    height: 50px;            /* Set the height */
+    border-radius: 50%;      /* Make the button circular */
+    background-color: #f8a145;
+    color: #ffffff;
+    border: none;
+    font-size: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.circular-btn:hover {
+    background-color: #CC5500;
 }

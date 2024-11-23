@@ -9,6 +9,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     document.getElementById("save-btn").addEventListener("click", saveProfileData);
+    document.getElementById("logout-btn").addEventListener("click", logout);
+    document.getElementById("back-btn").addEventListener("click", goBack);
 });
 
 function getCookie(name) {
@@ -130,4 +132,19 @@ async function saveProfileData() {
     } catch (error) {
         showMessage(error.message, "error");
     }
+}
+
+function logout() {
+    const cookies = document.cookie.split(";");
+
+    cookies.forEach(cookie => {
+        const cookieName = cookie.split("=")[0].trim();
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+    });
+
+    window.location.href = '/login';
+}
+
+function goBack() {
+    window.location.href = '/home';
 }

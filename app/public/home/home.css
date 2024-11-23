@@ -18,7 +18,7 @@ body {
 .side-panel {
     display: flex;
     flex-direction: column;
-    width: 33%;
+    width: 25%;
     background-color: #1c1c1c;
     padding: 20px;
     border-right: 2px solid #333;
@@ -103,11 +103,31 @@ body {
 .nav-container {
     margin-top: auto;
     padding: 20px;
+    display: flex;
+    justify-content: flex-end; 
 }
 
-#friends-nav-btn {
+.home-banner {
+    display: flex;
+    flex-direction: column;
     width: 100%;
-    padding: 10px;
+    background-color: #1c1c1c;
+    padding: 5px;
+}
+
+#banner-btn:hover {
+    background-color: #CC5500;
+}
+
+#chats {
+    flex: 1;
+    overflow-y: auto;
+}
+
+#banner-btn {
+    width: 10%;
+    padding: 8px;
+    margin: 2px;
     font-size: 1em;
     color: #ffffff;
     background-color: #f8a145;
@@ -115,13 +135,4 @@ body {
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.2s;
-}
-
-#friends-nav-btn:hover {
-    background-color: #CC5500;
-}
-
-#chats {
-    flex: 1;
-    overflow-y: auto;
 }

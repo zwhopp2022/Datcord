@@ -12,11 +12,16 @@
         <div id="chats">
             <!-- Chat list will be dynamically inserted here -->
         </div>
-        <div class="nav-container">
-            <button id="friends-nav-btn" onclick="window.location.href='/friends'">Friends</button>
-        </div>
     </div>
     <div class="main-content">
+        <div class="home-banner">
+            <div class="nav-container">
+                <button id="banner-btn" onclick="window.location.href='/friends'">Friends</button>
+                <button id="banner-btn" onclick="window.location.href='/profile'">Profile</button>
+            </div>
+        </div>
+        <div id="current-chat">
+        </div>
     </div>
     <script src="home.js"></script>
 </body>
