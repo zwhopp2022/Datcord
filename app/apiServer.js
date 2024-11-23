@@ -32,7 +32,6 @@ app.use(cors({
 }));
 
 let authorize = async (req, res, next) => {
-    console.log(req.path);
     let noVerificationPaths = ["/add-user", "/login", "register", "/chat", "/create"];
     if (noVerificationPaths.includes(req.path)) {
         return next();
@@ -47,7 +46,7 @@ let authorize = async (req, res, next) => {
 app.use(authorize);
 
 let cookieOptions = {
-    httpOnly: true, // client js can't access
+    httpOnly: false, // true so that client side js cannot read cookies
     secure: true, // prevents packet sniffing by using https
     sameSite: "strict", // only include this cookie on requests to the same domain
 };
@@ -140,7 +139,6 @@ function checkUserAttributes(body) {
 }
 
 function validateUserAttributes(body) {
-    console.log(body["date"].length);
     if (
         (body["username"].length > 0 && body["username"].length <= 16) &&
         (body["password"].length <= 72) &&
@@ -290,31 +288,31 @@ app.post("/modify-user", async (req, res) => {
                 query += updates.join(', ');
                 query += ` WHERE username = $${paramCount}`;
                 params.push(req.body["username"]);
-
                 pool.query(query, params)
                     .then(async (result) => {
                         // If username was updated, update Friends table
                         if (body["username"] && body["username"] !== req.body["username"]) {
-                            const friendsUpdated = await updateFriendsTableUsername(req.body["username"], body["username"]);
+                            const friendsUpdated = await updateFriendsTableUsername(req.body["username"], body["updatedUsername"]);
                             if (!friendsUpdated) {
-                                return res.status(400).json({ "message": "failed to update friends relationships" });
+                                return res.status(400).json({ "message": "Failed to update friends relationships" });
                             }
                         }
-                        return res.status(200).json({ "message": "user successfully modified" });
+                        return res.status(200).json({ "message": "User successfully modified" });
                     })
                     .catch((error) => {
-                        return res.status(400).json({ "message": "failed to update user in database" });
+                        return res.status(400).json({ "message": "Failed to update user in database" });
                     });
             } else {
-                return res.status(400).json({ "message": "failed to find user in database" });
+                return res.status(400).json({ "message": "Failed to find user in database" });
             }
         } else {
-            return res.status(500).json({ "error": "misformatted user information" });
+            return res.status(500).json({ "error": "Misformatted user information" });
         }
     } else {
-        return res.status(500).json({ "error": "missing user information" });
+        return res.status(500).json({ "error": "Missing user information" });
     }
 });
+
 // send username, get all information about user
 // in an object
 // NOTE: it is assumed this server is not open to the public,
@@ -592,8 +590,6 @@ app.post('/accept-friend-request', async (req, res) => {
         return res.status(500).json({ "error": "missing user information" });
     }
 });
-
-
 
 
 

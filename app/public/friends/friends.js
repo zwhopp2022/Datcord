@@ -1,12 +1,13 @@
 let friends = [];
 let friendRequests = [];
-let currentUser = null;
+let currentUser = getCookie("username");
 
 let searchBar = document.getElementById("search-bar");
 let searchButton = document.getElementById("search-button");
 let sidePanel = document.getElementById("friends");
 let mainBody = document.getElementById('main-body');
 let searchResultsContainer = document.getElementById("search-results");
+const token = getCookie("token");
 
 // resetting search results by clicking anywhere
 document.addEventListener("click", () => {
@@ -18,7 +19,13 @@ document.addEventListener("click", () => {
 searchButton.addEventListener("click", (event) => {
     let searchTarget = searchBar.value;
 
-    fetch(`http://localhost:3000/search-user?username=${searchTarget}`, {}).then(response => {
+    fetch(`http://localhost:3000/search-user?username=${searchTarget}`, {
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            "Content-Type": "application/json"
+        },
+        credentials: 'include'  // Ensures cookies are sent with the request
+    }).then(response => {
         if (response.ok && response.headers.get("Content-Type")?.includes("application/json")) {
             return response.json();
         } else {
@@ -28,7 +35,13 @@ searchButton.addEventListener("click", (event) => {
         let userWasFound = body["result"];
 
         if (userWasFound) {
-            fetch(`http://localhost:3000/search-friends?username=${currentUser}&searchTarget=${searchTarget}`, {}).then(response => {
+            fetch(`http://localhost:3000/search-friends?username=${currentUser}&searchTarget=${searchTarget}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                credentials: 'include'  // Ensures cookies are sent with the request
+            }).then(response => {
                 if (response.ok && response.headers.get("Content-Type")?.includes("application/json")) {
                     return response.json();
                 } else {
@@ -78,12 +91,25 @@ searchButton.addEventListener("click", (event) => {
     });
 });
 
+function getCookie(name) {
+    const cookies = document.cookie.split("; ");
+    for (let cookie of cookies) {
+        console.log(cookie);
+        const [key, value] = cookie.split("=");
+        if (key === name) {
+            return decodeURIComponent(value);
+        }
+    }
+    return null;
+}
+
 
 // usernameTwo should be currentUser for most calls
 function sendFriendRequest(usernameOne, usernameTwo) {
     fetch("http://localhost:3000/add-friend", {
         method: "POST",
         headers: {
+            'Authorization': `Bearer ${token}`,
             "Content-Type": "application/json"
         },
         body: JSON.stringify({
@@ -91,6 +117,7 @@ function sendFriendRequest(usernameOne, usernameTwo) {
             "usernameTwo": usernameTwo,
             "sentBy": usernameTwo
         }),
+        credentials: 'include'  // Ensures cookies are sent with the request
     }).then(response => {
         if (response.ok && response.headers.get("Content-Type")?.includes("application/json")) {
             return response.json();
@@ -114,12 +141,14 @@ function acceptRequest(usernameOne, usernameTwo) {
     fetch("http://localhost:3000/accept-friend-request", {
         method: "POST",
         headers: {
+            'Authorization': `Bearer ${token}`,
             "Content-Type": "application/json"
         },
         body: JSON.stringify({
             "usernameOne": usernameOne,
             "usernameTwo": usernameTwo
         }),
+        credentials: 'include'  // Ensures cookies are sent with the request
     }).then(response => {
         if (response.ok && response.headers.get("Content-Type")?.includes("application/json")) {
             return response.json();
@@ -145,12 +174,14 @@ function declineRequest(usernameOne, usernameTwo) {
     fetch("http://localhost:3000/remove-friend", {
         method: "POST",
         headers: {
+            'Authorization': `Bearer ${token}`,
             "Content-Type": "application/json"
         },
         body: JSON.stringify({
             "usernameOne": usernameOne,
             "usernameTwo": usernameTwo
         }),
+        credentials: 'include'  // Ensures cookies are sent with the request
     }).then(response => {
         if (response.ok && response.headers.get("Content-Type")?.includes("application/json")) {
             return response.json();
@@ -242,9 +273,10 @@ function addFriendRequestToMainBody(username) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-    let storedUser = localStorage.getItem('currentUser');
-    if (storedUser) {
-        currentUser = JSON.parse(storedUser);
+    let currentUser = {};
+    currentUser.username = getCookie("username");
+    currentUser.token = getCookie("token");
+    if (currentUser) {
         document.getElementById("left-panel-header").textContent = `${currentUser.username}'s Friends`;
         await fetchFriendsAndRequests(currentUser.username, currentUser.token);
     } else {
@@ -260,11 +292,14 @@ async function fetchFriendsAndRequests(username, token) {
 
     try {
         let friendsResponse = await fetch(`http://localhost:3000/get-friends?username=${username}`, {
+            method: 'GET',  // Specify the method (GET)
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
-            }
+            },
+            credentials: 'include'  // Ensures cookies are sent with the request
         });
+
         if (friendsResponse.ok) {
             let friendsBody = await friendsResponse.json();
             for (let friend of friendsBody.friends) {
@@ -276,11 +311,14 @@ async function fetchFriendsAndRequests(username, token) {
         }
 
         let requestsResponse = await fetch(`http://localhost:3000/get-friend-requests?username=${username}`, {
+            method: 'GET',  // Specify the method (GET)
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
-            }
+            },
+            credentials: 'include'  // Ensures cookies are sent with the request
         });
+
         if (requestsResponse.ok) {
             let friendRequestsBody = await requestsResponse.json();
             for (let friendRequest of friendRequestsBody.friends) {

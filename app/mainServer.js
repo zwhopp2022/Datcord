@@ -30,32 +30,32 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // makes the redirect to login happen at any point if the auth token doesn't exist
 // or expired
-app.use((req, res, next) => {
-    const token = req.cookies?.token;
+// app.use((req, res, next) => {
+//     const token = req.cookies?.token;
 
-    // If token exists and user is already on /home, proceed
-    if (token && req.originalUrl === "/home") {
-        return next();
-    }
+//     // If token exists and user is already on /home, proceed
+//     if (token && req.originalUrl === "/home") {
+//         return next();
+//     }
 
-    // If no token and user is already on /login, proceed
-    if (!token && req.originalUrl === "/login") {
-        return next();
-    }
+//     // If no token and user is already on /login, proceed
+//     if (!token && req.originalUrl === "/login") {
+//         return next();
+//     }
 
-    // Redirect to /home if token exists but user is not on /home
-    if (token) {
-        return res.redirect("/home");
-    }
+//     // Redirect to /home if token exists but user is not on /home
+//     if (token) {
+//         return res.redirect("/home");
+//     }
 
-    // Redirect to /login if no token and user is not on /login
-    if (!token) {
-        return res.redirect("/login");
-    }
+//     // Redirect to /login if no token and user is not on /login
+//     if (!token) {
+//         return res.redirect("/login");
+//     }
 
-    // Proceed to the intended route
-    next();
-});
+//     // Proceed to the intended route
+//     next();
+// });
 
 
 app.get('/profile', (req, res) => {

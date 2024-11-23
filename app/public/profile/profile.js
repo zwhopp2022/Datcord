@@ -1,7 +1,8 @@
 document.addEventListener("DOMContentLoaded", async () => {
-    let storedUser = getCookie("username");
-    if (storedUser) {
-        let currentUser = JSON.parse(storedUser);
+    let currentUser = {};
+    currentUser.username = getCookie("username");
+    currentUser.token = getCookie("token");
+    if (currentUser) {
         await populateProfileFields(currentUser.username, currentUser.token);
     } else {
         console.log("No user is logged in");
@@ -25,8 +26,10 @@ async function fetchUser(username, token) {
     try {
         const response = await fetch(`http://localhost:3000/get-user?username=${username}`, {
             headers: {
-                'Authorization': `Bearer ${token}`
-            }
+                'Authorization': `Bearer ${token}`,
+                "Content-Type": "application/json"
+            },
+            credentials: 'include'  // Ensures cookies are sent with the request
         });
         if (!response.ok) throw new Error('Failed to fetch current user data');
         return await response.json();
@@ -71,13 +74,14 @@ function showMessage(message, type) {
 }
 
 async function saveProfileData() {
-    let storedUser = getCookie("username");
-    if (!storedUser) {
+    let currentUser = {};
+    currentUser.username = getCookie("username");
+    currentUser.token = getCookie("token");
+    if (!currentUser) {
         showMessage("No user is logged in", "error");
         return;
     }
 
-    let currentUser = JSON.parse(storedUser);
     const newPassword = document.getElementById("new-password").value;
     const confirmPassword = document.getElementById("confirm-password").value;
 
@@ -94,7 +98,7 @@ async function saveProfileData() {
         updatedPassword: newPassword || null,
         updatedBio: document.getElementById("bio").value || currentUser.bio,
         updatedStatus: document.getElementById("status").value || currentUser.status,
-        updatedDate: document.getElementById("birthday").value.split('-')
+        updatedDate: document.getElementById("birthday").value
     };
 
     try {
