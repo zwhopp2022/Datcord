@@ -16,7 +16,7 @@ const app = express();
 const port = 3000;
 const hostname = "localhost";
 
-const env = require("../appsettings.local.json");
+const env = require("../appsettings.json");
 const Pool = pg.Pool;
 const pool = new Pool(env);
 let server = http.createServer(app);
@@ -138,7 +138,9 @@ function checkUserAttributes(body) {
     }
 }
 
-function validateUserAttributes(body) {
+function validateUserAttributes(body) 
+{
+    console.log(body["date"].length);
     if (
         (body["username"].length > 0 && body["username"].length <= 16) &&
         (body["password"].length <= 72) &&
@@ -374,6 +376,7 @@ app.post("/login", async (req, res) => {
         plainPassword = body.password;
 
         if (!searchUserHelper(username)) {
+
             return res.status(400).json({ "error": "Username or Password incorrect" });
         }
 
