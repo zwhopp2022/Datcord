@@ -1,10 +1,12 @@
 const express = require("express");
-const app = express();
 const path = require("path");
 const cors = require('cors');
 const axios = require("axios");
 const { Server } = require("socket.io");
 const http = require("http");
+const cookieParser = require("cookie-parser");
+
+const app = express();
 
 const port = 3001;
 const hostname = "localhost";
@@ -22,8 +24,39 @@ app.use(cors({
   origin: 'http://localhost:3000',
   credentials: true
 }));
-
+app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+
+
+// makes the redirect to login happen at any point if the auth token doesn't exist
+// or expired
+app.use((req, res, next) => {
+    const token = req.cookies?.token;
+
+    // If token exists and user is already on /home, proceed
+    if (token && req.originalUrl === "/home") {
+        return next();
+    }
+
+    // If no token and user is already on /login, proceed
+    if (!token && req.originalUrl === "/login") {
+        return next();
+    }
+
+    // Redirect to /home if token exists but user is not on /home
+    if (token) {
+        return res.redirect("/home");
+    }
+
+    // Redirect to /login if no token and user is not on /login
+    if (!token) {
+        return res.redirect("/login");
+    }
+
+    // Proceed to the intended route
+    next();
+});
+
 
 app.get('/profile', (req, res) => {
   res.sendFile(path.resolve(__dirname, 'public', 'profile', 'profile.html')); 

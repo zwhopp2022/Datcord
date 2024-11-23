@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", async () => {
-    let storedUser = localStorage.getItem('currentUser');
+    let storedUser = getCookie("username");
     if (storedUser) {
         let currentUser = JSON.parse(storedUser);
         await populateProfileFields(currentUser.username, currentUser.token);
@@ -9,6 +9,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     document.getElementById("save-btn").addEventListener("click", saveProfileData);
 });
+
+function getCookie(name) {
+    const cookies = document.cookie.split("; ");
+    for (let cookie of cookies) {
+        const [key, value] = cookie.split("=");
+        if (key === name) {
+            return decodeURIComponent(value);
+        }
+    }
+    return null;
+}
 
 async function fetchUser(username, token) {
     try {
@@ -60,7 +71,7 @@ function showMessage(message, type) {
 }
 
 async function saveProfileData() {
-    let storedUser = localStorage.getItem('currentUser');
+    let storedUser = getCookie("username");
     if (!storedUser) {
         showMessage("No user is logged in", "error");
         return;
@@ -102,13 +113,12 @@ async function saveProfileData() {
             throw new Error(errorData.message || 'Error saving profile data');
         }
 
-        // Update localStorage with new username if it was changed
+        // Update cookies with new username if it was changed
         if (updatedUser.updatedUsername !== currentUser.username) {
-            localStorage.setItem('currentUser', JSON.stringify({
-                username: updatedUser.updatedUsername,
-                token: currentUser.token
-            }));
+            document.cookie = `user=${encodeURIComponent(updatedUser.updatedUsername)}; path=/;`;
+            document.cookie = `token=${encodeURIComponent(currentUser.token)}; path=/;`;
         }
+        
 
         showMessage("Profile updated successfully!", "success");
         document.getElementById("new-password").value = '';
