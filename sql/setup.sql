@@ -3,6 +3,7 @@ CREATE DATABASE datcord;
 \c datcord
 DROP TABLE Users CASCADE;
 DROP TABLE Friends CASCADE;
+DROP TABLE Rooms CASCADE;
 
 
 -- table for Users 
@@ -33,6 +34,16 @@ CREATE TABLE IF NOT EXISTS Rooms (
     code VARCHAR(4) PRIMARY KEY
 );
 
+CREATE TABLE IF NOT EXISTS DirectMessages (
+    roomCode VARCHAR(4) NOT NULL PRIMARY KEY,
+    usernameOne VARCHAR(16),
+    usernameTwo VARCHAR(16),
+    FOREIGN KEY (roomCode) REFERENCES Rooms(code) ON DELETE CASCADE,
+    FOREIGN KEY (usernameOne) REFERENCES Users(username) ON DELETE CASCADE,
+    FOREIGN KEY (usernameTwo) REFERENCES Users(username) ON DELETE CASCADE,
+    CHECK (usernameOne <> usernameTwo)
+);
+
 CREATE TABLE IF NOT EXISTS Messages (
     id SERIAL PRIMARY KEY,
     sentMessage VARCHAR(1000),
@@ -48,6 +59,11 @@ CREATE TABLE IF NOT EXISTS Messages (
 -- will NOT happen, only one of those rows can exist at a time
 -- api endpoints account for this
 CREATE UNIQUE INDEX unique_friend_pairs ON Friends (
+    LEAST(usernameOne, usernameTwo),
+    GREATEST(usernameOne, usernameTwo)
+);
+
+CREATE UNIQUE INDEX unique_direct_message ON DirectMessages (
     LEAST(usernameOne, usernameTwo),
     GREATEST(usernameOne, usernameTwo)
 );

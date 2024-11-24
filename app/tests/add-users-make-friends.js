@@ -7,10 +7,10 @@ fetch("http://localhost:3000/add-user", {
     },
     body: JSON.stringify({
         "username": "heelclicksmcgee",
-        "password": "thisismypassword",
+        "password": "password",
         "bio": "bro clicks his heels",
         "status": "clankinck",
-        "date": ["2024", "10", "28"]
+        "date": "2024-10-28"
     }),
 }).then(response => {
     if (response.ok && response.headers.get("Content-Type")?.includes("application/json")) {
@@ -31,10 +31,10 @@ fetch("http://localhost:3000/add-user", {
     },
     body: JSON.stringify({
         "username": "johndoe",
-        "password": "thisismypassword",
+        "password": "password",
         "bio": "johns livin man",
         "status": "johnin",
-        "date": ["2024", "10", "28"]
+        "date": "2024-10-28"
     }),
 }).then(response => {
     if (response.ok && response.headers.get("Content-Type")?.includes("application/json")) {
@@ -55,10 +55,10 @@ fetch("http://localhost:3000/add-user", {
     },
     body: JSON.stringify({
         "username": "janedee",
-        "password": "thisismypassword",
+        "password": "password",
         "bio": "jane's livin yo",
         "status": "jane-in'",
-        "date": ["2024", "10", "28"]
+        "date": "2024-10-28"
     }),
 }).then(response => {
     if (response.ok && response.headers.get("Content-Type")?.includes("application/json")) {

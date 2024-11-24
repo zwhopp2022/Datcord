@@ -21,8 +21,9 @@ const Pool = pg.Pool;
 const pool = new Pool(env);
 let server = http.createServer(app);
 let io = new Server(server);
+let rooms = {};
 
-app.use(express.static("public"));
+app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 app.use(cookieParser());
 
@@ -32,7 +33,7 @@ app.use(cors({
 }));
 
 let authorize = async (req, res, next) => {
-    let noVerificationPaths = ["/", "/add-user", "/login", "register", "/chat", "/create"];
+    let noVerificationPaths = ["/", "/add-user", "/login", "/register", "/add-friend"];
     if (noVerificationPaths.includes(req.path)) {
         return next();
     }
@@ -138,9 +139,7 @@ function checkUserAttributes(body) {
     }
 }
 
-function validateUserAttributes(body) 
-{
-    console.log(body["date"].length);
+function validateUserAttributes(body) {
     if (
         (body["username"].length > 0 && body["username"].length <= 16) &&
         (body["password"].length <= 72) &&
@@ -595,34 +594,7 @@ app.post('/accept-friend-request', async (req, res) => {
 });
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-let rooms = {};
+// EVERYTHING FOR DIRECT MESSAGES
 
 async function generateRoomCode() {
     let characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -646,14 +618,117 @@ function printRooms() {
     }
 }
 
-app.post("/create", (req, res) => {
-    let roomId = generateRoomCode();
-    saveRoom(roomId);
-    rooms[roomId] = {};
-    return res.json({ roomId });
+function validateDirectMessageCreation(body) {
+    if (body.hasOwnProperty("usernameOne") && body.hasOwnProperty("usernameTwo")) {
+        if ((body["usernameOne"].length >= 1 && body["usernameOne"].length <= 16) && 
+            (body["usernameTwo"].length >= 1 && body["usernameTwo"].length <= 16)) 
+        {
+            return true;
+        } else {
+            return false;
+        }
+    } else {
+        return false;
+    }
+}
+
+// searches to see if a chat exists between two users
+// returns true if yes, false if no
+function searchDirectMessages(usernameOne, usernameTwo) {
+    return pool.query(
+        `SELECT * FROM DirectMessages WHERE 
+         (usernameOne = $1 AND usernameTwo = $2) 
+         OR (usernameOne = $2 AND usernameTwo = $1)`,
+        [usernameOne, usernameTwo]
+    ).then((result) => {
+        return result.rows.length > 0; // Returns true if a chat exists
+    }).catch((error) => {
+        console.error("Error in searchDirectMessages:", error);
+        return false; // Assume no match in case of an error
+    });
+}
+
+// adds new direct message to database
+function addDirectMessageChat(roomCode, usernameOne, usernameTwo) {
+    return pool.query(
+        `INSERT INTO DirectMessages (roomCode, usernameOne, usernameTwo)
+         VALUES ($1, $2, $3)`,
+        [roomCode, usernameOne, usernameTwo]
+    ).then((result) => {
+        return true;
+    }).catch((error) => {
+        return false;
+    });
+}
+
+// creates a new 'chat' in database with room code and two usernames
+app.post("/create-direct-message", async (req, res) => {
+    let body = req.body;
+
+    if (validateDirectMessageCreation(body)) {
+        if (!(await searchDirectMessages(body["usernameOne"], body["usernameTwo"]))) { 
+            let roomId = await generateRoomCode();
+            await saveRoom(roomId);
+            if (await addDirectMessageChat(roomId, body["usernameOne"], body["usernameTwo"])) {
+                return res.status(200).json({ "result": true });
+            } else {
+                return res.status(400).json({ "result": false });
+            }
+        } else {
+            return res.status(400).json({ "message": "Chat already exists" });
+        }
+    } else {
+        return res.status(400).json({ "message": "Missing username information" });
+    }
 });
 
-app.get("/chat", (req, res) => {
+app.post("/remove-direct-message", async (req, res) => {
+    let body = req.body;
+    let username = body.username;
+
+    if (username) {
+        if (username.length >= 1 && username.length <= 16) {
+            pool.query(
+                `DELETE FROM DirectMessages WHERE usernameOne = $1 OR usernameTwo = $1`,
+                [username]
+            ).then((result) => {
+                return res.status(200).json({ "result": true });
+            }).catch((error) => {
+                return res.status(400).json({ "message": "Error removing chat from database" });
+            });
+        } else {
+            return res.status(400).json({ "message": "Misformatted username information" });
+        }
+    } else {
+        return res.status(400).json({ "message": "Missing username information" });
+    }
+});
+
+
+// returns all chat objects from database to client
+app.get("/get-direct-messages", (req, res) => {
+    let username = req.query.username;
+    
+    if (username) {
+        if (username.length >= 1 && username.length <= 16) {
+            pool.query(
+                `SELECT * FROM DirectMessages WHERE usernameOne = $1 OR usernameTwo = $1`,
+                [username]
+            ).then((result) => {
+                return res.status(200).json({ "result": result.rows });
+            }).catch((error) => {
+                return res.status(400).json({ "message": "Error finding chats in database" });
+            });
+        } else {
+            return res.status(400).json({ "message": "Misformatted username information" });
+        }
+    } else {
+        return res.status(400).json({ "message": "Missing username information" });
+    }
+});
+
+// renders existing chat room from server to client
+app.get("/home/chat/direct-message", (req, res) => {
     let roomId = req.query.roomId;
     console.log(roomId);
     if (!searchRoom(roomId)) {
@@ -663,9 +738,15 @@ app.get("/chat", (req, res) => {
     res.sendFile(path.resolve(__dirname, 'public', 'directmessage', 'directmessage.html'));
 });
 
-// if you need to do things like associate a socket with a logged in user, see
-// https://socket.io/how-to/deal-with-cookies
-// to see how you can fetch application cookies from the socket
+// saves new message in a chat
+app.post("/save-message", (req, res) => {
+
+});
+
+// returns all messages in a given, existing chat
+app.get("/get-messages", (req, res) => {
+
+});
 
 io.on("connection", (socket) => {
     console.log(`Socket ${socket.id} connected`);
@@ -703,9 +784,6 @@ io.on("connection", (socket) => {
         }
     });
 
-    socket.on("hello", (data) => {
-        console.log(data);
-    });
 });
 
 async function storeMessage(message, username, roomId) {

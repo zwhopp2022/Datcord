@@ -9,6 +9,17 @@ function appendMessage(username, message) {
     messagesDiv.appendChild(item);
 }
 
+function getCookie(name) {
+    const cookies = document.cookie.split("; ");
+    for (let cookie of cookies) {
+        const [key, value] = cookie.split("=");
+        if (key === name) {
+            return decodeURIComponent(value);
+        }
+    }
+    return null;
+}
+
 let socket = io('http://localhost:3001', {
     query: { roomId: roomId }
 });
@@ -38,8 +49,7 @@ button.addEventListener("click", () => {
         return;
     }
     
-    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-    const username = currentUser ? currentUser.username : 'Anonymous';
+    const username = getCookie("username");
     
     console.log("Attempting to send message:", message);
     
