@@ -65,31 +65,23 @@ function extractUserName(row) {
 
 
 function renderChatsInPanel() {
-
-    while (chatSection.firstChild) {
-        chatSection.removeChild(chatSection.firstChild);
-    }
-
+    chatSection.innerHTML = ''; // Clear existing chat boxes first
     fetch(`http://localhost:3000/get-direct-messages?username=${currentUser}`, {
         headers: {
             'Authorization': `Bearer ${token}`,
             "Content-Type": "application/json"
         },
-        credentials: 'include'  // Ensures cookies are sent with the request
-    }).then(response => {
-        if (response.ok && response.headers.get("Content-Type")?.includes("application/json")) {
-            return response.json();  // Parse JSON if content type is JSON
-        } else {
-            return response.text();  // Otherwise, parse as plain text
-        }
-    }).then(body => {
-        for (let row of body.result) {
+        credentials: 'include',
+    })
+    .then(response => response.json())
+    .then(body => {
+        body.result.forEach(row => {
             createAndInsertChat(extractUserName(row), row["roomcode"]);
-        }
-    }).catch(error => {
-        console.log(error);
-    });    
+        });
+    })
+    .catch(error => console.log("Error fetching chats:", error));
 }
+
 
 function promptNewChat() {
     while (newChatContainer.firstChild) {
@@ -141,7 +133,10 @@ function clearDivAndMakeNewChatButton() {
     newChatButton.classList.add("chat-btn");
     newChatButton.textContent = "New Chat";
     newChatButton.addEventListener("click", promptNewChat);
+    let messageContainer = document.createElement("div");
+    messageContainer.id = "message-container";
     newChatContainer.appendChild(newChatButton);
+    newChatContainer.appendChild(messageContainer);
 }
 
 function cancelNewChat() {
@@ -216,68 +211,37 @@ function makeNewChat() {
 }
 
 function removeChat(event) {
-    let removeButton = event.target; 
-    let parentDiv = removeButton.closest("div");
+    let parentDiv = event.target.closest(".chat-box");
     let usernameButton = parentDiv.querySelector("#username-button");
-    let targetUsername = usernameButton.textContent;
 
+    if (!usernameButton) {
+        console.error("Username button not found.");
+        return;
+    }
+
+    let targetUsername = usernameButton.textContent; 
+    
     fetch("http://localhost:3000/remove-direct-message", {
+        method: "POST",
         headers: {
             'Authorization': `Bearer ${token}`,
             "Content-Type": "application/json"
         },
-        method: "POST",
         credentials: 'include',
-        body: JSON.stringify({ "username": targetUsername })
-    }).then(response => {
-        if (response.ok && response.headers.get("Content-Type")?.includes("application/json")) {
-            return response.json();
-        } else {
-            return response.text();
-        }
-    }).then(body => {
+        body: JSON.stringify({ "username": targetUsername }) 
+    })
+    .then(response => response.json())
+    .then(body => {
         if (body.result) {
             showMessage(`Removed chat with ${targetUsername}`, "success");
-            renderChatsInPanel();
+            parentDiv.remove();
+            const iframe = document.getElementById("current-chat");
+            iframe.src = "";
         } else {
             showMessage(body.message, "error");
         }
-    }).catch(error => {
-        showMessage(error.message, "error");
-    });
+    }).catch(error => showMessage(error.message, "error"));
 }
-
-// function renderChatInMainContent(event) {
-//     let usernameButton = event.target; 
-//     let parentDiv = usernameButton.closest("div");
-//     let roomId = parentDiv.id.text;
-
-//     console.log(roomId);
-
-//     fetch(`http://localhost:3000/home/chat/direct-message?roomId=${roomId}`, {
-//         headers: {
-//             'Authorization': `Bearer ${token}`,
-//             "Content-Type": "application/json"
-//         },
-//         method: "GET",
-//         credentials: 'include'
-//     }).then(response => {
-//         if (response.ok) {
-//             return response.text();
-//         } else {
-//             return response.text();
-//         }
-//     }).then(body => {
-//         if (body) {
-//             document.getElementById("current-chat").innerHTML = body;
-//         } else {
-//             showMessage("Failed to load chat room", "error");
-//         }
-//     }).catch(error => {
-//         showMessage(error.message, "error");
-//     });
-    
-// }
 
 function renderChatInMainContent(event) {
     let usernameButton = event.target;
@@ -295,7 +259,6 @@ function renderChatInMainContent(event) {
 
     const iframe = document.getElementById("current-chat");
 
-    // Set the src attribute of the iframe dynamically
     iframe.src = `http://localhost:3000/home/chat/direct-message?roomId=${roomId}`;
 
     iframe.onload = () => {

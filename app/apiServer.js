@@ -632,6 +632,26 @@ function validateDirectMessageCreation(body) {
     }
 }
 
+function validateMessageText(body) {
+    if (
+        body.hasOwnProperty("sentMessage") &&
+        body.hasOwnProperty("sentBy") &&
+        body.hasOwnProperty("roomCode")
+    ) {
+        if (
+            (body["sentMessage"].length > 0 && body["sentMessage"].length <= 1000) &&
+            (body["sentBy"].length > 0 && body["sentBy"].length <= 16) &&
+            (body["roomCode"].length === 4)
+        ) {
+            return true;
+        } else {
+            return false;
+        }
+    } else {
+        return false;
+    }
+}
+
 // searches to see if a chat exists between two users
 // returns true if yes, false if no
 function searchDirectMessages(usernameOne, usernameTwo) {
@@ -740,19 +760,52 @@ app.get("/home/chat/direct-message", (req, res) => {
 
 // saves new message in a chat
 app.post("/save-message", (req, res) => {
+    let body = req.body;
 
+    if (validateMessageText(body)) {
+        const { sentMessage, sentBy, roomCode } = body;
+
+        pool.query(
+            "INSERT INTO Messages (sentMessage, sentBy, roomCode) VALUES ($1, $2, $3) RETURNING *",
+            [sentMessage, sentBy, roomCode]
+        ).then(result => {
+            res.status(200).json({ "result": true });
+        }).catch(error => {
+            console.error("Error saving message:", error.message);
+            res.status(500).json({ "message": "Internal server error" });
+        });
+
+    } else {
+        return res.status(400).json({ "message": "Missing or misformatted message information" });
+    }
 });
+
 
 // returns all messages in a given, existing chat
-app.get("/get-messages", (req, res) => {
+app.get("/get-messages", async (req, res) => {
+    const roomId = req.query.roomId;
 
+    if (!roomId || !(await searchRoom(roomId))) {
+        return res.status(404).json({ "message": "Room not found" });
+    }
+
+    pool.query(
+        "SELECT * FROM Messages WHERE roomCode = $1 ORDER BY id ASC",
+        [roomId]
+    ).then(result => {
+        res.status(200).json({ "result": result.rows });
+    }).catch(error => {
+        console.error("Error retrieving messages:", error.message);
+        res.status(500).json({ "message": "Internal server error" });
+    });
 });
+
 
 io.on("connection", (socket) => {
     console.log(`Socket ${socket.id} connected`);
 
     let roomId = socket.handshake.query.roomId;
-    console.log("Room ID from query:", roomId);
+    // console.log("Room ID from query:", roomId);
 
     if (!searchRoom(roomId)) {
         return;
@@ -769,17 +822,19 @@ io.on("connection", (socket) => {
         delete rooms[roomId][socket.id];
     });
 
-    socket.on("messageBroadcast", (data) => {
+    socket.on("messageBroadcast", async (data) => {
         const { message, username } = data;
 
-        console.log(`Socket ${socket.id} (${username}) sent message: ${message} in room: ${roomId}`);
-        console.log("Broadcasting message to other sockets in room");
+        await storeMessage(message, username, roomId);
+
+        // console.log(`Socket ${socket.id} (${username}) sent message: ${message} in room: ${roomId}`);
+        // console.log("Broadcasting message to other sockets in room");
 
         for (let otherSocket of Object.values(rooms[roomId])) {
             if (otherSocket.id === socket.id) {
                 continue;
             }
-            console.log(`Sending message ${message} from ${username} to socket ${otherSocket.id}`);
+            // console.log(`Sending message ${message} from ${username} to socket ${otherSocket.id}`);
             otherSocket.emit("messageBroadcast", { message, username });
         }
     });
@@ -787,11 +842,12 @@ io.on("connection", (socket) => {
 });
 
 async function storeMessage(message, username, roomId) {
+    console.log("got here");
     try {
         await pool.query(
             `INSERT INTO Messages (sentMessage, sentBy, roomCode) VALUES($1, $2, $3)`,
             [message, username, roomId]
-        )
+        );
     } catch (error) {
         console.log(`Error inserting message into database: ${error}`);
     }
