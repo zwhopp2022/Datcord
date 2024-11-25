@@ -25,7 +25,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         console.log("No user is logged in");
     }
 
-    clearDivAndMakeNewChatButton();
+    clearDivAndMakeNewChatButtons();
 
 });
 
@@ -83,7 +83,7 @@ function renderChatsInPanel() {
 }
 
 
-function promptNewChat() {
+function promptNewDirectMessageChat() {
     while (newChatContainer.firstChild) {
         newChatContainer.removeChild(newChatContainer.firstChild);
     }
@@ -123,24 +123,144 @@ function promptNewChat() {
     newChatContainer.appendChild(messageContainer);
 }
 
-function clearDivAndMakeNewChatButton() {
+function promptNewDirectMessageChat() {
     while (newChatContainer.firstChild) {
         newChatContainer.removeChild(newChatContainer.firstChild);
     }
 
-    let newChatButton = document.createElement("button");
-    newChatButton.id = "chat-button";
-    newChatButton.classList.add("chat-btn");
-    newChatButton.textContent = "New Chat";
-    newChatButton.addEventListener("click", promptNewChat);
+    let messageContainer = document.createElement("div");
+    let usernameInput = document.createElement("input");
+    let cancelButton = document.createElement("button");
+    let createButton = document.createElement("button");
+
+    cancelButton.classList.add("chat-btn");
+    createButton.classList.add("chat-btn");
+
+    cancelButton.id = "cancel-button";
+    createButton.id = "create-button";
+    usernameInput.id = "username-input";
+    messageContainer.id = "message-container";
+
+    usernameInput.style.width = "100%";
+    usernameInput.style.padding = "10px";
+    usernameInput.style.borderRadius = "15px";
+    usernameInput.style.marginBottom = "10px"; 
+    usernameInput.style.border = "1px solid #ccc";
+
+    cancelButton.style.marginRight = "2px";
+    cancelButton.style.width = "48%";
+    cancelButton.textContent = "Cancel";
+    createButton.style.marginLeft = "2px"; 
+    createButton.style.width = "48%";
+    createButton.textContent = "Create";
+
+    cancelButton.addEventListener("click", cancelNewChat);
+    createButton.addEventListener("click", makeNewChat);
+
+    newChatContainer.appendChild(usernameInput);
+    newChatContainer.appendChild(cancelButton);
+    newChatContainer.appendChild(createButton);
+    newChatContainer.appendChild(messageContainer);
+}
+
+function promptNewGroupChat() {
+    while (newChatContainer.firstChild) {
+        newChatContainer.removeChild(newChatContainer.firstChild);
+    }
+
+    let usernameInput = document.createElement("input");
+    let addButton = document.createElement("button");
+    let cancelButton = document.createElement("button");
+    let createButton = document.createElement("button");
+    let userInputsContainer = document.createElement("div");
+
+    usernameInput.classList.add("username-input");
+    usernameInput.style.width = "100%";
+    usernameInput.style.padding = "10px";
+    usernameInput.style.borderRadius = "15px";
+    usernameInput.style.marginBottom = "10px";
+    usernameInput.style.border = "1px solid #ccc";
+
+    addButton.classList.add("chat-btn");
+    cancelButton.classList.add("chat-btn");
+    createButton.classList.add("chat-btn");
+
+    addButton.id = "add-button";
+    cancelButton.id = "cancel-button";
+    createButton.id = "create-button";
+    userInputsContainer.id = "user-inputs-container";
+
+    addButton.textContent = "Add User";
+    cancelButton.textContent = "Cancel";
+    createButton.textContent = "Create Chat";
+
+    addButton.style.marginRight = "2px";
+    cancelButton.style.marginRight = "2px";
+    createButton.style.marginLeft = "2px";
+    addButton.style.width = "48%";
+    cancelButton.style.width = "48%";
+    createButton.style.width = "48%";
+
+    userInputsContainer.appendChild(usernameInput);
+
+    cancelButton.addEventListener("click", cancelNewChat);
+    addButton.addEventListener("click", () => {
+        let newInput = document.createElement("input");
+        newInput.classList.add("username-input");
+        newInput.style.width = "100%";
+        newInput.style.padding = "10px";
+        newInput.style.borderRadius = "15px";
+        newInput.style.marginBottom = "10px";
+        newInput.style.border = "1px solid #ccc";
+        userInputsContainer.appendChild(newInput);
+    });
+
+    createButton.addEventListener("click", () => {
+        let usernames = Array.from(
+            userInputsContainer.getElementsByClassName("username-input")
+        ).map(input => input.value.trim());
+
+        usernames = usernames.filter(username => username !== "");
+
+        if (usernames.length > 0) {
+            makeNewGroupChat(usernames);
+        } else {
+            alert("Please add at least one username.");
+        }
+    });
+
+    newChatContainer.appendChild(userInputsContainer);
+    newChatContainer.appendChild(addButton);
+    newChatContainer.appendChild(cancelButton);
+    newChatContainer.appendChild(createButton);
+}
+
+function clearDivAndMakeNewChatButtons() {
+    while (newChatContainer.firstChild) {
+        newChatContainer.removeChild(newChatContainer.firstChild);
+    }
+
+    let newDirectMessageButton = document.createElement("button");
+    newDirectMessageButton.id = "dm-button";
+    newDirectMessageButton.classList.add("chat-btn");
+    newDirectMessageButton.textContent = "New Direct Message";
+
+    let newGroupChatButton = document.createElement("button");
+    newGroupChatButton.id = "gc-button";
+    newGroupChatButton.classList.add("chat-btn");
+    newGroupChatButton.textContent = "New Group Chat";
+
+    newDirectMessageButton.addEventListener("click", promptNewDirectMessageChat);
+    newGroupChatButton.addEventListener("click", promptNewGroupChat);
     let messageContainer = document.createElement("div");
     messageContainer.id = "message-container";
-    newChatContainer.appendChild(newChatButton);
+    newChatContainer.appendChild(newDirectMessageButton);
+    newChatContainer.appendChild(newGroupChatButton);
     newChatContainer.appendChild(messageContainer);
 }
 
 function cancelNewChat() {
-    clearDivAndMakeNewChatButton();
+    clearDivAndMakeNewChatButtons();
 }
 
 function showMessage(message, type) {
@@ -208,6 +328,10 @@ function makeNewChat() {
     }).catch(error => {
         showMessage(error.message, "error");
     });
+}
+
+function makeNewGroupChat() {
+
 }
 
 function removeChat(event) {
