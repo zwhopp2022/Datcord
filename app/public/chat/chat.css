@@ -1,3 +1,4 @@
+/* General Reset */
 * {
     margin: 0;
     padding: 0;
@@ -43,6 +44,7 @@ body {
     border-radius: 8px;
     display: flex;
     flex-direction: column; /* Stack messages vertically */
+    gap: 10px; /* Add spacing between messages */
 }
 
 /* Message Input Container */
@@ -143,6 +145,7 @@ body {
 /* Message Item Styling */
 .message-item {
     display: flex;
+    flex-direction: column;
     align-items: flex-start;
     margin: 10px 0;
     padding: 10px 15px;
@@ -150,11 +153,16 @@ body {
     background-color: #bfbfbf; /* Slightly darker gray */
     max-width: 80%;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    word-wrap: break-word; /* Ensure word wrapping for long text */
+    word-break: break-word;
+    white-space: pre-wrap; /* Preserve spaces and break lines */
 }
 
+/* Username Styling */
 .message-username {
     font-weight: bold;
-    margin-right: 10px;
+    margin-bottom: 5px;
+    word-wrap: break-word; /* Wrap long usernames */
 }
 
 .message-username.self {
@@ -165,7 +173,10 @@ body {
     color: #d35400; /* Reddish orange for other users */
 }
 
+/* Message Text Styling */
 .message-text {
     color: #000000;
     word-wrap: break-word;
+    white-space: pre-wrap; /* Preserve formatting */
+    overflow-wrap: break-word; /* Break long words if needed */
 }

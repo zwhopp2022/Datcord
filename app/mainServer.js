@@ -28,13 +28,27 @@ app.use(cors({
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/', (req, res) => {
-  let { token } = req.cookies;
-  if (token) {
-    res.redirect('/home');
-  } else {
-    res.redirect('/login');
+app.use((req, res, next) => {
+  const { token } = req.cookies;
+  const normalizedPath = req.path.replace(/\/$/, '');
+  const publicRoutes = ['/login', '/register', '/set-cookie'];
+
+  if (publicRoutes.includes(normalizedPath)) {
+    return next();
   }
+
+  if (!token) {
+    console.log("No token found, redirecting to /login");
+    return res.redirect('/login');
+  }
+
+  next();
+});
+
+// all main route handlers
+
+app.get('/', (req, res) => {
+  res.redirect('/home');
 });
 
 app.get('/profile', (req, res) => {
