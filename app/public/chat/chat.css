@@ -1,4 +1,4 @@
-
+/* General Reset */
 * {
     margin: 0;
     padding: 0;
@@ -30,16 +30,21 @@ body {
     display: flex;
     flex-direction: column;
     padding: 20px;
+    position: relative;
 }
 
 /* Chat Container */
 #chat-container {
     flex: 1;
-    overflow-y: auto;
+    overflow-y: auto; /* Enables scrolling */
+    max-height: 100%; /* Set your preferred max height */
     padding: 20px;
     margin-bottom: 20px;
     background-color: #1c1c1c;
     border-radius: 8px;
+    display: flex;
+    flex-direction: column; /* Stack messages vertically */
+    gap: 10px; /* Add spacing between messages */
 }
 
 /* Message Input Container */
@@ -49,8 +54,13 @@ body {
     padding: 20px;
     background-color: #1c1c1c;
     border-radius: 8px;
+    position: sticky;
+    bottom: 0;
+    width: 100%;
+    z-index: 10;
 }
 
+/* Input and Button Styling */
 #message-input {
     flex: 1;
     padding: 10px;
@@ -76,7 +86,7 @@ body {
     background-color: #CC5500;
 }
 
-/* Chat Panel Row (similar to friend-panel-row) */
+/* Chat Panel Row */
 .chat-panel-row {
     display: flex;
     align-items: center;
@@ -124,4 +134,49 @@ body {
 #chats {
     flex: 1;
     overflow-y: auto;
+}
+
+body {
+    background-color: #181818;
+    color: #e0e0e0;
+    font-family: Arial, sans-serif;
+}
+
+/* Message Item Styling */
+.message-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin: 10px 0;
+    padding: 10px 15px;
+    border-radius: 10px;
+    background-color: #bfbfbf; /* Slightly darker gray */
+    max-width: 80%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    word-wrap: break-word; /* Ensure word wrapping for long text */
+    word-break: break-word;
+    white-space: pre-wrap; /* Preserve spaces and break lines */
+}
+
+/* Username Styling */
+.message-username {
+    font-weight: bold;
+    margin-bottom: 5px;
+    word-wrap: break-word; /* Wrap long usernames */
+}
+
+.message-username.self {
+    color: #e69a0e; /* Darker orange for the current user */
+}
+
+.message-username.other-user {
+    color: #d35400; /* Reddish orange for other users */
+}
+
+/* Message Text Styling */
+.message-text {
+    color: #000000;
+    word-wrap: break-word;
+    white-space: pre-wrap; /* Preserve formatting */
+    overflow-wrap: break-word; /* Break long words if needed */
 }

@@ -28,13 +28,27 @@ app.use(cors({
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/', (req, res) => {
-  let { token } = req.cookies;
-  if (token) {
-    res.redirect('/home');
-  } else {
-    res.redirect('/login');
+app.use((req, res, next) => {
+  const { token } = req.cookies;
+  const normalizedPath = req.path.replace(/\/$/, '');
+  const publicRoutes = ['/login', '/register', '/set-cookie'];
+
+  if (publicRoutes.includes(normalizedPath)) {
+    return next();
   }
+
+  if (!token) {
+    console.log("No token found, redirecting to /login");
+    return res.redirect('/login');
+  }
+
+  next();
+});
+
+// all main route handlers
+
+app.get('/', (req, res) => {
+  res.redirect('/home');
 });
 
 app.get('/profile', (req, res) => {
@@ -57,18 +71,14 @@ app.get('/register', (req, res) => {
   res.sendFile(path.resolve(__dirname, 'public', 'register', 'register.html')); 
 });
 
-app.get('/chat', async (req, res) => {
-  try {
-    const response = await axios.get(`http://localhost:3000/chat?roomId=${req.query.roomId}`, {
-      responseType: 'arraybuffer', // to handle binary data if necessary
-    });
-
-    res.set('Content-Type', 'text/html');
-    res.send(response.data);
-  } catch (error) {
-    console.error("Error fetching the chat file:", error);
-    res.status(500).send("Error loading the chat file.");
+app.get("/home/chat", (req, res) => {
+  let roomId = req.query.roomId;
+  console.log(roomId);
+  if (!searchRoom(roomId)) {
+      return res.status(404).send();
   }
+  console.log("Sending room", roomId);
+  res.sendFile(path.resolve(__dirname, 'public', 'chat', 'chat.html'));
 });
 
 let rooms = {};

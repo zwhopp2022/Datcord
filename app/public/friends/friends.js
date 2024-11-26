@@ -102,6 +102,9 @@ function getCookie(name) {
     return null;
 }
 
+function goBack() {
+    window.location.href = '/home';
+}
 
 // usernameTwo should be currentUser for most calls
 function sendFriendRequest(usernameOne, usernameTwo) {
@@ -281,6 +284,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     } else {
         console.log("No user is logged in");
     }
+
+    document.getElementById("back-btn").addEventListener("click", goBack);
 });
 
 async function fetchFriendsAndRequests(username, token) {

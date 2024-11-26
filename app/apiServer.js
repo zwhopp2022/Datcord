@@ -21,8 +21,9 @@ const Pool = pg.Pool;
 const pool = new Pool(env);
 let server = http.createServer(app);
 let io = new Server(server);
+let rooms = {};
 
-app.use(express.static("public"));
+app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 app.use(cookieParser());
 
@@ -32,7 +33,7 @@ app.use(cors({
 }));
 
 let authorize = async (req, res, next) => {
-    let noVerificationPaths = ["/", "/add-user", "/login", "register", "/chat", "/create"];
+    let noVerificationPaths = ["/", "/add-user", "/login", "/register", "/add-friend"];
     if (noVerificationPaths.includes(req.path)) {
         return next();
     }
@@ -138,9 +139,7 @@ function checkUserAttributes(body) {
     }
 }
 
-function validateUserAttributes(body) 
-{
-    console.log(body["date"].length);
+function validateUserAttributes(body) {
     if (
         (body["username"].length > 0 && body["username"].length <= 16) &&
         (body["password"].length <= 72) &&
@@ -595,34 +594,7 @@ app.post('/accept-friend-request', async (req, res) => {
 });
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-let rooms = {};
+// HANDLERS FOR CHATS
 
 async function generateRoomCode() {
     let characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -646,32 +618,335 @@ function printRooms() {
     }
 }
 
-app.post("/create", (req, res) => {
-    let roomId = generateRoomCode();
-    saveRoom(roomId);
-    rooms[roomId] = {};
-    return res.json({ roomId });
+function validateDirectMessageCreation(body) {
+    if (body.hasOwnProperty("usernameOne") && body.hasOwnProperty("usernameTwo") && body.hasOwnProperty("title")) {
+        if ((body["usernameOne"].length >= 1 && body["usernameOne"].length <= 16) && 
+            (body["usernameTwo"].length >= 1 && body["usernameTwo"].length <= 16) &&
+            (body["title"].length >= 1 && body["title"].length <= 33)
+        ) 
+        {   
+            console.log("sub 1");
+            return true;
+        } else {
+            console.log("sub 2");
+            return false;
+        }
+    } else {
+        console.log("sub 3");
+        return false;
+    }
+}
+
+function validateUsernamesForGroupCreation(usernames) {
+    if (usernames.length === 0) {
+        return false;
+    }
+    for (let username of usernames) {
+        if (username.length >= 1 && username.length <= 16) {
+            continue;
+        } else {
+            return false;
+        }
+    }
+    return true;
+}
+
+function validateGroupMessageCreation(body) {
+    if (body.hasOwnProperty("title") && body.hasOwnProperty("usernames")) {
+        if (
+            (body["title"].length >= 1 && body["title"].length <= 16) &&
+            validateUsernamesForGroupCreation(body["usernames"])
+        ) 
+        {
+            return true;
+        } else {
+            return false;
+        }
+    } else {
+        return false;
+    }
+}
+
+function validateMessageText(body) {
+    if (
+        body.hasOwnProperty("sentMessage") &&
+        body.hasOwnProperty("sentBy") &&
+        body.hasOwnProperty("roomCode")
+    ) {
+        if (
+            (body["sentMessage"].length > 0 && body["sentMessage"].length <= 1000) &&
+            (body["sentBy"].length > 0 && body["sentBy"].length <= 16) &&
+            (body["roomCode"].length === 4)
+        ) {
+            return true;
+        } else {
+            return false;
+        }
+    } else {
+        return false;
+    }
+}
+
+// searches to see if a chat exists between two users
+// returns true if yes, false if no
+function searchDirectMessages(usernameOne, usernameTwo) {
+    return pool.query(
+        `SELECT c.id FROM Chats c
+         INNER JOIN ChatAssociations ca1 ON c.roomId = ca1.roomId
+         INNER JOIN ChatAssociations ca2 ON c.roomId = ca2.roomId
+         WHERE c.isDirectMessage = TRUE
+           AND ca1.username = $1
+           AND ca2.username = $2`,
+        [usernameOne, usernameTwo]
+    ).then((result) => {
+        return result.rows.length > 0; // Returns true if a chat exists
+    }).catch((error) => {
+        console.error("Error in searchDirectMessages:", error);
+        return false; // Assume no match in case of an error
+    });
+}
+
+
+// searches to see if a chat exists with certain title
+// returns true if yes, false if no
+function searchGroupMessages(title) {
+    return pool.query(
+        `SELECT 1 FROM Chats WHERE title = $1`,
+        [title]
+    )
+        .then((result) => {
+            return result.rowCount > 0; // Return true if a match is found
+        })
+        .catch((error) => {
+            console.error("Error in searchGroupMessages:", error);
+            return false; // Return false in case of an error
+        });
+}
+
+
+// adds new direct message to database
+// adds new direct message to database
+async function addDirectMessageChat(roomCode, title, usernameOne, usernameTwo) {
+    console.log(roomCode);
+    console.log(title);
+    console.log(usernameOne);
+    console.log(usernameTwo);
+    await pool.query(
+        `INSERT INTO Chats (roomId, title, permissionLevel, isDirectMessage)
+            VALUES ($1, $2, 1, TRUE)
+            RETURNING roomId`,
+        [roomCode, title]
+    ).then(() => {
+    pool.query(
+        `INSERT INTO ChatAssociations (roomId, username)
+            VALUES ($1, $2)`,
+        [roomCode, usernameOne]
+        )
+    }).then(() => {
+    pool.query(
+            `INSERT INTO ChatAssociations (roomId, username)
+                VALUES ($1, $2)`,
+            [roomCode, usernameTwo]
+        )
+    }).catch((error) => {
+        console.log(error.message);
+        return false;
+    });
+    return true;
+}
+
+
+// adds new group message to database
+async function addGroupMessageChat(roomCode, title, usernames) {
+    try {
+        await pool.query(
+            `INSERT INTO Chats (roomId, title, permissionLevel, isDirectMessage)
+                VALUES ($1, $2, 1, TRUE)
+                RETURNING roomId`,
+            [roomCode, title]
+        );
+
+        for (let username of usernames) {
+            await pool.query(
+                `INSERT INTO ChatAssociations (roomId, username)
+                    VALUES ($1, $2)`,
+                [roomCode, username]
+            );
+        }
+        
+    } catch (error) {
+        console.log(error.message);
+        return false;
+    }
+    return true;
+}
+
+
+
+// creates a new 'chat' in database with room code and two usernames
+// for direct messaging purposes only
+app.post("/create-direct-message", async (req, res) => {
+    let body = req.body;
+
+    if (validateDirectMessageCreation(body)) {
+        if (!(await searchDirectMessages(body["usernameOne"], body["usernameTwo"]))) { 
+            let roomId = await generateRoomCode();
+            await saveRoom(roomId);
+            if (await addDirectMessageChat(roomId, body["title"], body["usernameOne"], body["usernameTwo"])) {
+                console.log("1");
+                return res.status(200).json({ "result": true });
+            } else {
+                console.log("2");
+                return res.status(400).json({ "result": false });
+            }
+        } else {
+            console.log("3");
+            return res.status(400).json({ "message": "Chat already exists" });
+        }
+    } else {
+        console.log("4");
+        return res.status(400).json({ "message": "Missing username information" });
+    }
 });
 
-app.get("/chat", (req, res) => {
+
+// creates a new 'chat' in database with room code and at least one username
+// for group messaging
+app.post("/create-group-message", async (req, res) => {
+    let body = req.body;
+
+    if (validateGroupMessageCreation(body)) {
+        if (!(await searchGroupMessages(body["title"]))) { 
+            let roomId = await generateRoomCode();
+            await saveRoom(roomId);
+            if (await addGroupMessageChat(roomId, body["title"], body["usernames"])) {
+                return res.status(200).json({ "result": true });
+            } else {
+                return res.status(400).json({ "result": false });
+            }
+        } else {
+            return res.status(400).json({ "message": "Chat already exists" });
+        }
+    } else {
+        return res.status(400).json({ "message": "Missing username information" });
+    }
+});
+
+app.post("/remove-chat", async (req, res) => {
+    let body = req.body;
+    let roomId = body.roomId;
+
+    if (!roomId || roomId.length !== 4) {
+        return res.status(400).json({ message: "Misformatted or missing roomId information" });
+    }
+
+    try {
+        await pool.query('BEGIN');
+
+        await pool.query(
+            `DELETE FROM ChatAssociations WHERE roomId = $1`,
+            [roomId]
+        );
+
+        await pool.query(
+            `DELETE FROM Chats WHERE roomId = $1`,
+            [roomId]
+        );
+
+        await pool.query('COMMIT');
+        return res.status(200).json({ result: true });
+    } catch (error) {
+        console.error("Error removing chat:", error);
+        await pool.query('ROLLBACK');
+        return res.status(400).json({ message: "Error removing chat from database" });
+    }
+});
+
+
+// returns all chat objects from database to client
+app.get("/get-chats", (req, res) => {
+    let username = req.query.username;
+
+    if (!username || username.length < 1 || username.length > 16) {
+        return res.status(400).json({ message: "Misformatted or missing username information" });
+    }
+
+    pool.query(
+        `SELECT c.*
+         FROM Chats c
+         INNER JOIN ChatAssociations ca ON c.roomId = ca.roomId
+         WHERE ca.username = $1`,
+        [username]
+    )
+        .then((result) => {
+            return res.status(200).json({ result: result.rows });
+        })
+        .catch((error) => {
+            console.error("Error fetching chats:", error);
+            return res.status(400).json({ message: "Error finding chats in database" });
+        });
+});
+
+
+// renders existing chat room from server to client
+app.get("/home/chat", (req, res) => {
     let roomId = req.query.roomId;
     console.log(roomId);
     if (!searchRoom(roomId)) {
         return res.status(404).send();
     }
     console.log("Sending room", roomId);
-    res.sendFile(path.resolve(__dirname, 'public', 'directmessage', 'directmessage.html'));
+    res.sendFile(path.resolve(__dirname, 'public', 'chat', 'chat.html'));
 });
 
-// if you need to do things like associate a socket with a logged in user, see
-// https://socket.io/how-to/deal-with-cookies
-// to see how you can fetch application cookies from the socket
+// saves new message in a chat
+app.post("/save-message", (req, res) => {
+    let body = req.body;
+
+    if (validateMessageText(body)) {
+        const { sentMessage, sentBy, roomCode } = body;
+
+        pool.query(
+            "INSERT INTO Messages (sentMessage, sentBy, roomCode) VALUES ($1, $2, $3) RETURNING *",
+            [sentMessage, sentBy, roomCode]
+        ).then(result => {
+            res.status(200).json({ "result": true });
+        }).catch(error => {
+            console.error("Error saving message:", error.message);
+            res.status(500).json({ "message": "Internal server error" });
+        });
+
+    } else {
+        return res.status(400).json({ "message": "Missing or misformatted message information" });
+    }
+});
+
+
+// returns all messages in a given, existing chat
+app.get("/get-messages", async (req, res) => {
+    const roomId = req.query.roomId;
+
+    if (!roomId || !(await searchRoom(roomId))) {
+        return res.status(404).json({ "message": "Room not found" });
+    }
+
+    pool.query(
+        "SELECT * FROM Messages WHERE roomCode = $1 ORDER BY id ASC",
+        [roomId]
+    ).then(result => {
+        res.status(200).json({ "result": result.rows });
+    }).catch(error => {
+        console.error("Error retrieving messages:", error.message);
+        res.status(500).json({ "message": "Internal server error" });
+    });
+});
+
 
 io.on("connection", (socket) => {
     console.log(`Socket ${socket.id} connected`);
 
     let roomId = socket.handshake.query.roomId;
-    console.log("Room ID from query:", roomId);
+    // console.log("Room ID from query:", roomId);
 
     if (!searchRoom(roomId)) {
         return;
@@ -688,32 +963,29 @@ io.on("connection", (socket) => {
         delete rooms[roomId][socket.id];
     });
 
-    socket.on("messageBroadcast", (data) => {
+    socket.on("messageBroadcast", async (data) => {
         const { message, username } = data;
 
-        console.log(`Socket ${socket.id} (${username}) sent message: ${message} in room: ${roomId}`);
-        console.log("Broadcasting message to other sockets in room");
+        await storeMessage(message, username, roomId);
+
 
         for (let otherSocket of Object.values(rooms[roomId])) {
             if (otherSocket.id === socket.id) {
                 continue;
             }
-            console.log(`Sending message ${message} from ${username} to socket ${otherSocket.id}`);
             otherSocket.emit("messageBroadcast", { message, username });
         }
     });
 
-    socket.on("hello", (data) => {
-        console.log(data);
-    });
 });
 
 async function storeMessage(message, username, roomId) {
+    console.log("got here");
     try {
         await pool.query(
             `INSERT INTO Messages (sentMessage, sentBy, roomCode) VALUES($1, $2, $3)`,
             [message, username, roomId]
-        )
+        );
     } catch (error) {
         console.log(`Error inserting message into database: ${error}`);
     }

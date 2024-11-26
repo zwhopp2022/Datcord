@@ -66,9 +66,10 @@ body {
 }
 
 /* Button styling */
-#save-btn {
+.btn {
     width: 100%;
     padding: 10px;
+    margin: 5px;
     font-size: 1em;
     color: #ffffff;
     background-color: #f8a145;
@@ -78,7 +79,7 @@ body {
     transition: background-color 0.2s;
 }
 
-#save-btn:hover {
+.btn:hover {
     background-color: #CC5500;
 }
 
@@ -102,3 +103,26 @@ body {
     color: #51cf66;
     border: 1px solid #28a745;
 }
+
+.circular-btn {
+    position: fixed;         /* Fix the button's position on the screen */
+    top: 20px;               /* Position 10px from the top */
+    left: 10px;              /* Position 10px from the left */
+    width: 50px;             /* Set the width */
+    height: 50px;            /* Set the height */
+    border-radius: 50%;      /* Make the button circular */
+    background-color: #f8a145;
+    color: #ffffff;
+    border: none;
+    font-size: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.circular-btn:hover {
+    background-color: #CC5500;
+}
+

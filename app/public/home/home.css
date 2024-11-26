@@ -18,7 +18,7 @@ body {
 .side-panel {
     display: flex;
     flex-direction: column;
-    width: 33%;
+    width: 25%;
     background-color: #1c1c1c;
     padding: 20px;
     border-right: 2px solid #333;
@@ -103,11 +103,32 @@ body {
 .nav-container {
     margin-top: auto;
     padding: 20px;
+    display: flex;
+    justify-content: flex-end; 
 }
 
-#friends-nav-btn {
+.home-banner {
+    display: flex;
+    align-items: center;
     width: 100%;
-    padding: 10px;
+    background-color: #1c1c1c;
+    padding: 5px;
+}
+
+#banner-title {
+    font-size: 2.5rem; /* Larger font size for the title */
+    font-family: 'Arial', sans-serif; /* Clean font family */
+    margin-right: auto; /* Pushes the title to the left */
+    color: white;
+}
+
+.nav-container {
+    display: flex;
+    gap: 10px;
+}
+
+#banner-btn {
+    padding: 8px 20px;
     font-size: 1em;
     color: #ffffff;
     background-color: #f8a145;
@@ -117,11 +138,104 @@ body {
     transition: background-color 0.2s;
 }
 
-#friends-nav-btn:hover {
+#banner-btn:hover {
     background-color: #CC5500;
 }
 
-#chats {
-    flex: 1;
-    overflow-y: auto;
+.new-chat-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    background-color: #f1f1f1;
+    padding: 5px;
+}
+
+.chats {
+    border-top: 2px solid #333;
+    margin-top: 5%;
+}
+
+.chat-btn {
+    width: 75%;
+    padding: 8px;
+    margin: 2px;
+    font-size: 1em;
+    color: #ffffff;
+    background-color: #f8a145;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.chat-btn:hover {
+    background-color: #CC5500;
+}
+
+/* Message container styling */
+.message-container {
+    margin: 10px 0;
+    padding: 10px;
+    border-radius: 5px;
+    display: none; /* Hidden by default */
+    text-align: center;
+}
+
+.message-container.error {
+    background-color: rgba(220, 53, 69, 0.2);
+    color: #ff6b6b;
+    border: 1px solid #dc3545;
+}
+
+.message-container.success {
+    background-color: rgba(40, 167, 69, 0.2);
+    color: #51cf66;
+    border: 1px solid #28a745;
+}
+
+.chat-box {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    background-color: #333;
+    padding: 10px;
+    border-radius: 10px;
+    color: white;
+    font-size: 16px;
+    margin: 5px 0;
+}
+
+.remove-button {
+    width: 30px;
+    height: 30px;
+    background-color: red;
+    color: white;
+    font-size: 18px;
+    border: none;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 10px;
+    cursor: pointer;
+}
+
+.remove-button:hover {
+    background-color: darkred;
+}
+
+.username-button {
+    background-color: #444;
+    color: white;
+    font-size: 16px;
+    border: none;
+    border-radius: 8px;
+    padding: 5px 10px;
+    margin-left: 10px;
+    cursor: pointer;
+    flex-grow: 1; /* This makes the username button take up the remaining space */
+}
+
+.username-button:hover {
+    background-color: #555;
 }

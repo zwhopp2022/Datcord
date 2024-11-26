@@ -3,6 +3,9 @@ CREATE DATABASE datcord;
 \c datcord
 DROP TABLE Users CASCADE;
 DROP TABLE Friends CASCADE;
+DROP TABLE Rooms CASCADE;
+DROP TABLE Chats CASCADE;
+DROP TABLE ChatAssociations CASCADE;
 
 
 -- table for Users 
@@ -33,6 +36,22 @@ CREATE TABLE IF NOT EXISTS Rooms (
     code VARCHAR(4) PRIMARY KEY
 );
 
+CREATE TABLE IF NOT EXISTS Chats (
+    id SERIAL PRIMARY KEY,
+    roomId VARCHAR(4) NOT NULL,
+    title VARCHAR(33) NOT NULL,
+    permissionLevel INT DEFAULT 1,
+    isDirectMessage BOOLEAN
+);
+
+CREATE TABLE IF NOT EXISTS ChatAssociations (
+    id SERIAL PRIMARY KEY,
+    roomId VARCHAR(4) NOT NULL,
+    username VARCHAR(16),
+    FOREIGN KEY (roomId) REFERENCES Rooms(code),
+    FOREIGN KEY (username) REFERENCES Users(username)
+);
+
 CREATE TABLE IF NOT EXISTS Messages (
     id SERIAL PRIMARY KEY,
     sentMessage VARCHAR(1000),
@@ -51,3 +70,6 @@ CREATE UNIQUE INDEX unique_friend_pairs ON Friends (
     LEAST(usernameOne, usernameTwo),
     GREATEST(usernameOne, usernameTwo)
 );
+
+CREATE UNIQUE INDEX unique_room_user_association 
+ON ChatAssociations (roomId, username);
