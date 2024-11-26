@@ -57,28 +57,14 @@ app.get('/register', (req, res) => {
   res.sendFile(path.resolve(__dirname, 'public', 'register', 'register.html')); 
 });
 
-// app.get('/home/chat/direct-message', async (req, res) => {
-//   try {
-//     const response = await axios.get(`http://localhost:3000/home/chat/direct-message?roomId=${req.query.roomId}`, {
-//       responseType: 'arraybuffer', // to handle binary data if necessary
-//     });
-
-//     res.set('Content-Type', 'text/html');
-//     res.send(response.data);
-//   } catch (error) {
-//     console.error("Error fetching the chat file:", error);
-//     res.status(500).send("Error loading the chat file.");
-//   }
-// });
-
-app.get("/home/chat/direct-message", (req, res) => {
+app.get("/home/chat", (req, res) => {
   let roomId = req.query.roomId;
   console.log(roomId);
   if (!searchRoom(roomId)) {
       return res.status(404).send();
   }
   console.log("Sending room", roomId);
-  res.sendFile(path.resolve(__dirname, 'public', 'directmessage', 'directmessage.html'));
+  res.sendFile(path.resolve(__dirname, 'public', 'chat', 'chat.html'));
 });
 
 let rooms = {};

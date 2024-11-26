@@ -594,7 +594,7 @@ app.post('/accept-friend-request', async (req, res) => {
 });
 
 
-// EVERYTHING FOR DIRECT MESSAGES
+// HANDLERS FOR CHATS
 
 async function generateRoomCode() {
     let characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -619,9 +619,44 @@ function printRooms() {
 }
 
 function validateDirectMessageCreation(body) {
-    if (body.hasOwnProperty("usernameOne") && body.hasOwnProperty("usernameTwo")) {
+    if (body.hasOwnProperty("usernameOne") && body.hasOwnProperty("usernameTwo") && body.hasOwnProperty("title")) {
         if ((body["usernameOne"].length >= 1 && body["usernameOne"].length <= 16) && 
-            (body["usernameTwo"].length >= 1 && body["usernameTwo"].length <= 16)) 
+            (body["usernameTwo"].length >= 1 && body["usernameTwo"].length <= 16) &&
+            (body["title"].length >= 1 && body["title"].length <= 33)
+        ) 
+        {   
+            console.log("sub 1");
+            return true;
+        } else {
+            console.log("sub 2");
+            return false;
+        }
+    } else {
+        console.log("sub 3");
+        return false;
+    }
+}
+
+function validateUsernamesForGroupCreation(usernames) {
+    if (usernames.length === 0) {
+        return false;
+    }
+    for (let username of usernames) {
+        if (username.length >= 1 && username.length <= 16) {
+            continue;
+        } else {
+            return false;
+        }
+    }
+    return true;
+}
+
+function validateGroupMessageCreation(body) {
+    if (body.hasOwnProperty("title") && body.hasOwnProperty("usernames")) {
+        if (
+            (body["title"].length >= 1 && body["title"].length <= 16) &&
+            validateUsernamesForGroupCreation(body["usernames"])
+        ) 
         {
             return true;
         } else {
@@ -656,9 +691,12 @@ function validateMessageText(body) {
 // returns true if yes, false if no
 function searchDirectMessages(usernameOne, usernameTwo) {
     return pool.query(
-        `SELECT * FROM DirectMessages WHERE 
-         (usernameOne = $1 AND usernameTwo = $2) 
-         OR (usernameOne = $2 AND usernameTwo = $1)`,
+        `SELECT c.id FROM Chats c
+         INNER JOIN ChatAssociations ca1 ON c.roomId = ca1.roomId
+         INNER JOIN ChatAssociations ca2 ON c.roomId = ca2.roomId
+         WHERE c.isDirectMessage = TRUE
+           AND ca1.username = $1
+           AND ca2.username = $2`,
         [usernameOne, usernameTwo]
     ).then((result) => {
         return result.rows.length > 0; // Returns true if a chat exists
@@ -668,20 +706,85 @@ function searchDirectMessages(usernameOne, usernameTwo) {
     });
 }
 
-// adds new direct message to database
-function addDirectMessageChat(roomCode, usernameOne, usernameTwo) {
+
+// searches to see if a chat exists with certain title
+// returns true if yes, false if no
+function searchGroupMessages(title) {
     return pool.query(
-        `INSERT INTO DirectMessages (roomCode, usernameOne, usernameTwo)
-         VALUES ($1, $2, $3)`,
-        [roomCode, usernameOne, usernameTwo]
-    ).then((result) => {
-        return true;
-    }).catch((error) => {
-        return false;
-    });
+        `SELECT 1 FROM Chats WHERE title = $1`,
+        [title]
+    )
+        .then((result) => {
+            return result.rowCount > 0; // Return true if a match is found
+        })
+        .catch((error) => {
+            console.error("Error in searchGroupMessages:", error);
+            return false; // Return false in case of an error
+        });
 }
 
+
+// adds new direct message to database
+// adds new direct message to database
+async function addDirectMessageChat(roomCode, title, usernameOne, usernameTwo) {
+    console.log(roomCode);
+    console.log(title);
+    console.log(usernameOne);
+    console.log(usernameTwo);
+    await pool.query(
+        `INSERT INTO Chats (roomId, title, permissionLevel, isDirectMessage)
+            VALUES ($1, $2, 1, TRUE)
+            RETURNING roomId`,
+        [roomCode, title]
+    ).then(() => {
+    pool.query(
+        `INSERT INTO ChatAssociations (roomId, username)
+            VALUES ($1, $2)`,
+        [roomCode, usernameOne]
+        )
+    }).then(() => {
+    pool.query(
+            `INSERT INTO ChatAssociations (roomId, username)
+                VALUES ($1, $2)`,
+            [roomCode, usernameTwo]
+        )
+    }).catch((error) => {
+        console.log(error.message);
+        return false;
+    });
+    return true;
+}
+
+
+// adds new group message to database
+async function addGroupMessageChat(roomCode, title, usernames) {
+    try {
+        await pool.query(
+            `INSERT INTO Chats (roomId, title, permissionLevel, isDirectMessage)
+                VALUES ($1, $2, 1, TRUE)
+                RETURNING roomId`,
+            [roomCode, title]
+        );
+
+        for (let username of usernames) {
+            await pool.query(
+                `INSERT INTO ChatAssociations (roomId, username)
+                    VALUES ($1, $2)`,
+                [roomCode, username]
+            );
+        }
+        
+    } catch (error) {
+        console.log(error.message);
+        return false;
+    }
+    return true;
+}
+
+
+
 // creates a new 'chat' in database with room code and two usernames
+// for direct messaging purposes only
 app.post("/create-direct-message", async (req, res) => {
     let body = req.body;
 
@@ -689,7 +792,34 @@ app.post("/create-direct-message", async (req, res) => {
         if (!(await searchDirectMessages(body["usernameOne"], body["usernameTwo"]))) { 
             let roomId = await generateRoomCode();
             await saveRoom(roomId);
-            if (await addDirectMessageChat(roomId, body["usernameOne"], body["usernameTwo"])) {
+            if (await addDirectMessageChat(roomId, body["title"], body["usernameOne"], body["usernameTwo"])) {
+                console.log("1");
+                return res.status(200).json({ "result": true });
+            } else {
+                console.log("2");
+                return res.status(400).json({ "result": false });
+            }
+        } else {
+            console.log("3");
+            return res.status(400).json({ "message": "Chat already exists" });
+        }
+    } else {
+        console.log("4");
+        return res.status(400).json({ "message": "Missing username information" });
+    }
+});
+
+
+// creates a new 'chat' in database with room code and at least one username
+// for group messaging
+app.post("/create-group-message", async (req, res) => {
+    let body = req.body;
+
+    if (validateGroupMessageCreation(body)) {
+        if (!(await searchGroupMessages(body["title"]))) { 
+            let roomId = await generateRoomCode();
+            await saveRoom(roomId);
+            if (await addGroupMessageChat(roomId, body["title"], body["usernames"])) {
                 return res.status(200).json({ "result": true });
             } else {
                 return res.status(400).json({ "result": false });
@@ -702,60 +832,71 @@ app.post("/create-direct-message", async (req, res) => {
     }
 });
 
-app.post("/remove-direct-message", async (req, res) => {
+app.post("/remove-chat", async (req, res) => {
     let body = req.body;
-    let username = body.username;
+    let roomId = body.roomId;
 
-    if (username) {
-        if (username.length >= 1 && username.length <= 16) {
-            pool.query(
-                `DELETE FROM DirectMessages WHERE usernameOne = $1 OR usernameTwo = $1`,
-                [username]
-            ).then((result) => {
-                return res.status(200).json({ "result": true });
-            }).catch((error) => {
-                return res.status(400).json({ "message": "Error removing chat from database" });
-            });
-        } else {
-            return res.status(400).json({ "message": "Misformatted username information" });
-        }
-    } else {
-        return res.status(400).json({ "message": "Missing username information" });
+    if (!roomId || roomId.length !== 4) {
+        return res.status(400).json({ message: "Misformatted or missing roomId information" });
+    }
+
+    try {
+        await pool.query('BEGIN');
+
+        await pool.query(
+            `DELETE FROM ChatAssociations WHERE roomId = $1`,
+            [roomId]
+        );
+
+        await pool.query(
+            `DELETE FROM Chats WHERE roomId = $1`,
+            [roomId]
+        );
+
+        await pool.query('COMMIT');
+        return res.status(200).json({ result: true });
+    } catch (error) {
+        console.error("Error removing chat:", error);
+        await pool.query('ROLLBACK');
+        return res.status(400).json({ message: "Error removing chat from database" });
     }
 });
 
 
 // returns all chat objects from database to client
-app.get("/get-direct-messages", (req, res) => {
+app.get("/get-chats", (req, res) => {
     let username = req.query.username;
-    
-    if (username) {
-        if (username.length >= 1 && username.length <= 16) {
-            pool.query(
-                `SELECT * FROM DirectMessages WHERE usernameOne = $1 OR usernameTwo = $1`,
-                [username]
-            ).then((result) => {
-                return res.status(200).json({ "result": result.rows });
-            }).catch((error) => {
-                return res.status(400).json({ "message": "Error finding chats in database" });
-            });
-        } else {
-            return res.status(400).json({ "message": "Misformatted username information" });
-        }
-    } else {
-        return res.status(400).json({ "message": "Missing username information" });
+
+    if (!username || username.length < 1 || username.length > 16) {
+        return res.status(400).json({ message: "Misformatted or missing username information" });
     }
+
+    pool.query(
+        `SELECT c.*
+         FROM Chats c
+         INNER JOIN ChatAssociations ca ON c.roomId = ca.roomId
+         WHERE ca.username = $1`,
+        [username]
+    )
+        .then((result) => {
+            return res.status(200).json({ result: result.rows });
+        })
+        .catch((error) => {
+            console.error("Error fetching chats:", error);
+            return res.status(400).json({ message: "Error finding chats in database" });
+        });
 });
 
+
 // renders existing chat room from server to client
-app.get("/home/chat/direct-message", (req, res) => {
+app.get("/home/chat", (req, res) => {
     let roomId = req.query.roomId;
     console.log(roomId);
     if (!searchRoom(roomId)) {
         return res.status(404).send();
     }
     console.log("Sending room", roomId);
-    res.sendFile(path.resolve(__dirname, 'public', 'directmessage', 'directmessage.html'));
+    res.sendFile(path.resolve(__dirname, 'public', 'chat', 'chat.html'));
 });
 
 // saves new message in a chat
@@ -827,14 +968,11 @@ io.on("connection", (socket) => {
 
         await storeMessage(message, username, roomId);
 
-        // console.log(`Socket ${socket.id} (${username}) sent message: ${message} in room: ${roomId}`);
-        // console.log("Broadcasting message to other sockets in room");
 
         for (let otherSocket of Object.values(rooms[roomId])) {
             if (otherSocket.id === socket.id) {
                 continue;
             }
-            // console.log(`Sending message ${message} from ${username} to socket ${otherSocket.id}`);
             otherSocket.emit("messageBroadcast", { message, username });
         }
     });

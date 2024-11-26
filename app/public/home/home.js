@@ -63,10 +63,14 @@ function extractUserName(row) {
     }
 }
 
+function extractCreateDirectMessageTitle(title) {
+    return title.replace(currentUser, '').trim();
+}
+
 
 function renderChatsInPanel() {
-    chatSection.innerHTML = ''; // Clear existing chat boxes first
-    fetch(`http://localhost:3000/get-direct-messages?username=${currentUser}`, {
+    chatSection.innerHTML = '';
+    fetch(`http://localhost:3000/get-chats?username=${currentUser}`, {
         headers: {
             'Authorization': `Bearer ${token}`,
             "Content-Type": "application/json"
@@ -76,7 +80,7 @@ function renderChatsInPanel() {
     .then(response => response.json())
     .then(body => {
         body.result.forEach(row => {
-            createAndInsertChat(extractUserName(row), row["roomcode"]);
+            createAndInsertChat(extractCreateDirectMessageTitle(row["title"]), row["roomid"]);
         });
     })
     .catch(error => console.log("Error fetching chats:", error));
@@ -101,11 +105,13 @@ function promptNewDirectMessageChat() {
     usernameInput.id = "username-input";
     messageContainer.id = "message-container";
 
+    // Adding placeholder text
     usernameInput.style.width = "100%";
     usernameInput.style.padding = "10px";
     usernameInput.style.borderRadius = "15px";
     usernameInput.style.marginBottom = "10px"; 
     usernameInput.style.border = "1px solid #ccc";
+    usernameInput.placeholder = "Enter username";  // Placeholder text
 
     cancelButton.style.marginRight = "2px";
     cancelButton.style.width = "48%";
@@ -115,47 +121,14 @@ function promptNewDirectMessageChat() {
     createButton.textContent = "Create";
 
     cancelButton.addEventListener("click", cancelNewChat);
-    createButton.addEventListener("click", makeNewChat);
-
-    newChatContainer.appendChild(usernameInput);
-    newChatContainer.appendChild(cancelButton);
-    newChatContainer.appendChild(createButton);
-    newChatContainer.appendChild(messageContainer);
-}
-
-function promptNewDirectMessageChat() {
-    while (newChatContainer.firstChild) {
-        newChatContainer.removeChild(newChatContainer.firstChild);
-    }
-
-    let messageContainer = document.createElement("div");
-    let usernameInput = document.createElement("input");
-    let cancelButton = document.createElement("button");
-    let createButton = document.createElement("button");
-
-    cancelButton.classList.add("chat-btn");
-    createButton.classList.add("chat-btn");
-
-    cancelButton.id = "cancel-button";
-    createButton.id = "create-button";
-    usernameInput.id = "username-input";
-    messageContainer.id = "message-container";
-
-    usernameInput.style.width = "100%";
-    usernameInput.style.padding = "10px";
-    usernameInput.style.borderRadius = "15px";
-    usernameInput.style.marginBottom = "10px"; 
-    usernameInput.style.border = "1px solid #ccc";
-
-    cancelButton.style.marginRight = "2px";
-    cancelButton.style.width = "48%";
-    cancelButton.textContent = "Cancel";
-    createButton.style.marginLeft = "2px"; 
-    createButton.style.width = "48%";
-    createButton.textContent = "Create";
-
-    cancelButton.addEventListener("click", cancelNewChat);
-    createButton.addEventListener("click", makeNewChat);
+    createButton.addEventListener("click", () => {
+        let targetUsername = usernameInput.value.trim();
+        if (targetUsername && targetUsername !== currentUser) {
+            makeNewChat("direct-message", "", [currentUser, targetUsername]);
+        } else {
+            showMessage("Please enter a valid username for DM.", "error");
+        }
+    });
 
     newChatContainer.appendChild(usernameInput);
     newChatContainer.appendChild(cancelButton);
@@ -168,18 +141,20 @@ function promptNewGroupChat() {
         newChatContainer.removeChild(newChatContainer.firstChild);
     }
 
-    let usernameInput = document.createElement("input");
+    let titleInput = document.createElement("input");
     let addButton = document.createElement("button");
     let cancelButton = document.createElement("button");
     let createButton = document.createElement("button");
     let userInputsContainer = document.createElement("div");
+    let messageContainer = document.createElement("div");
 
-    usernameInput.classList.add("username-input");
-    usernameInput.style.width = "100%";
-    usernameInput.style.padding = "10px";
-    usernameInput.style.borderRadius = "15px";
-    usernameInput.style.marginBottom = "10px";
-    usernameInput.style.border = "1px solid #ccc";
+    titleInput.classList.add("username-input");
+    titleInput.style.width = "100%";
+    titleInput.style.padding = "10px";
+    titleInput.style.borderRadius = "15px";
+    titleInput.style.marginBottom = "10px";
+    titleInput.style.border = "1px solid #ccc";
+    titleInput.placeholder = "Enter chat title";
 
     addButton.classList.add("chat-btn");
     cancelButton.classList.add("chat-btn");
@@ -189,6 +164,7 @@ function promptNewGroupChat() {
     cancelButton.id = "cancel-button";
     createButton.id = "create-button";
     userInputsContainer.id = "user-inputs-container";
+    messageContainer.id = "message-container";
 
     addButton.textContent = "Add User";
     cancelButton.textContent = "Cancel";
@@ -201,7 +177,7 @@ function promptNewGroupChat() {
     cancelButton.style.width = "48%";
     createButton.style.width = "48%";
 
-    userInputsContainer.appendChild(usernameInput);
+    userInputsContainer.appendChild(titleInput);
 
     cancelButton.addEventListener("click", cancelNewChat);
     addButton.addEventListener("click", () => {
@@ -212,20 +188,26 @@ function promptNewGroupChat() {
         newInput.style.borderRadius = "15px";
         newInput.style.marginBottom = "10px";
         newInput.style.border = "1px solid #ccc";
+        newInput.placeholder = "Add a user";
         userInputsContainer.appendChild(newInput);
     });
 
     createButton.addEventListener("click", () => {
-        let usernames = Array.from(
-            userInputsContainer.getElementsByClassName("username-input")
-        ).map(input => input.value.trim());
+        let usernames = Array.from(userInputsContainer.getElementsByClassName("username-input"))
+            .map(input => input.value.trim())
+            .filter(username => username !== "" && username !== currentUser); 
 
-        usernames = usernames.filter(username => username !== "");
+        let title = titleInput.value.trim();
 
-        if (usernames.length > 0) {
-            makeNewGroupChat(usernames);
+        let reducedUserFields = [];
+        for (let i = 1; i < usernames.length; i++) {
+            reducedUserFields.push(usernames[i]);
+        }
+
+        if (reducedUserFields.length > 0 && title !== '') {
+            makeNewChat("group-chat", title, reducedUserFields);
         } else {
-            alert("Please add at least one username.");
+            showMessage("Please provide a title and add at least one user.", "error");
         }
     });
 
@@ -233,6 +215,7 @@ function promptNewGroupChat() {
     newChatContainer.appendChild(addButton);
     newChatContainer.appendChild(cancelButton);
     newChatContainer.appendChild(createButton);
+    newChatContainer.appendChild(messageContainer);
 }
 
 function clearDivAndMakeNewChatButtons() {
@@ -274,90 +257,97 @@ function showMessage(message, type) {
     }, 5000);
 }
 
-function makeNewChat() {
-    let targetUsername = document.getElementById("username-input").value;
-    
+function makeNewChat(type, title, usernames) {
+    // Ensure title and usernames are provided
+    if (!Array.isArray(usernames) || usernames.length === 0) {
+        showMessage("Invalid data for creating a chat.", "error");
+        return;
+    }
 
-    // search to see that user is friends with current logged in user first
-    fetch(`http://localhost:3000/search-friends?username=${currentUser}&searchTarget=${targetUsername}`, {
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            "Content-Type": "application/json"
-        },
-        credentials: 'include'  // Ensures cookies are sent with the request
-    }).then(response => {
-        if (response.ok && response.headers.get("Content-Type")?.includes("application/json")) {
-            return response.json();  // Parse JSON if content type is JSON
-        } else {
-            return response.text();  // Otherwise, parse as plain text
+    if (type === "direct-message") {
+        if (usernames.length !== 2 || usernames[1] === currentUser) {
+            showMessage("Please enter a valid username for DM.", "error");
+            return; 
         }
-    }).then(body => {
-        if (body["result"]) {
-            
-            fetch(`http://localhost:3000/create-direct-message`, {
+
+        const targetUsername = usernames[1];
+        const directMessageTitle = `${currentUser} ${targetUsername}`;
+
+        // Proceed to create the direct message chat
+        fetch("http://localhost:3000/create-direct-message", {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                "Content-Type": "application/json",
+            },
+            method: "POST",
+            credentials: 'include',  // Ensures cookies are sent with the request
+            body: JSON.stringify({
+                "usernameOne": currentUser,
+                "usernameTwo": targetUsername,
+                "title": directMessageTitle
+            })
+        }).then(response => response.json())
+        .then(body => {
+            if (body.result) {
+                showMessage(`Created new direct message: ${directMessageTitle}`, "success");
+                renderChatsInPanel();
+            } else {
+                showMessage(`Failed to create new direct message`, "error");
+            }
+        }).catch(error => {
+            showMessage(error.message, "error");
+        });
+
+    } else if (type === "group-chat") {
+        // For group chats, validate and proceed
+        if (usernames.length > 0 && title !== '') {
+            fetch("http://localhost:3000/create-group-message", {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     "Content-Type": "application/json",
                 },
                 method: "POST",
-                credentials: 'include',  // Ensures cookies are sent with the request
+                credentials: 'include', 
                 body: JSON.stringify({
-                    "usernameOne": currentUser,
-                    "usernameTwo": targetUsername
+                    "usernames": [currentUser, ...usernames], 
+                    "title": title
                 })
-            }).then(innerResponse => {
-                if (innerResponse.ok && innerResponse.headers.get("Content-Type")?.includes("application/json")) {
-                    return innerResponse.json();  // Parse JSON if content type is JSON
+            }).then(innerResponse => innerResponse.json())
+            .then(innerBody => {
+                if (innerBody.result) {
+                    showMessage(`Created new group chat: ${title}`, "success");
+                    renderChatsInPanel();  // Refresh the list of chats
                 } else {
-                    return innerResponse.text();  // Otherwise, parse as plain text
-                }
-            }).then(innerBody => {
-                if (innerBody["result"]) {
-                    showMessage(`Created new chat with ${targetUsername}`, "success");
-                    renderChatsInPanel();
-                } else {
-                    showMessage(`Failed to create new chat with ${targetUsername}`, "error");
+                    showMessage(`Failed to create new group chat`, "error");
                 }
             }).catch(innerError => {
                 showMessage(innerError.message, "error");
             });
-            
         } else {
-            showMessage(`Not friends with user ${targetUsername}`, "error");
+            console.log("got here 4");
+            showMessage("Please provide a title and add at least one user.", "error");
         }
-    }).catch(error => {
-        showMessage(error.message, "error");
-    });
-}
-
-function makeNewGroupChat() {
-
+    }
 }
 
 function removeChat(event) {
     let parentDiv = event.target.closest(".chat-box");
-    let usernameButton = parentDiv.querySelector("#username-button");
 
-    if (!usernameButton) {
-        console.error("Username button not found.");
-        return;
-    }
-
-    let targetUsername = usernameButton.textContent; 
+    let roomId = parentDiv.id;
     
-    fetch("http://localhost:3000/remove-direct-message", {
+    fetch("http://localhost:3000/remove-chat", {
         method: "POST",
         headers: {
             'Authorization': `Bearer ${token}`,
             "Content-Type": "application/json"
         },
         credentials: 'include',
-        body: JSON.stringify({ "username": targetUsername }) 
+        body: JSON.stringify({ "roomId":  roomId}) 
     })
     .then(response => response.json())
     .then(body => {
         if (body.result) {
-            showMessage(`Removed chat with ${targetUsername}`, "success");
+            showMessage(`Removed chat with id ${roomId}`, "success");
             parentDiv.remove();
             const iframe = document.getElementById("current-chat");
             iframe.src = "";
@@ -383,7 +373,7 @@ function renderChatInMainContent(event) {
 
     const iframe = document.getElementById("current-chat");
 
-    iframe.src = `http://localhost:3000/home/chat/direct-message?roomId=${roomId}`;
+    iframe.src = `http://localhost:3000/home/chat?roomId=${roomId}`;
 
     iframe.onload = () => {
         console.log(`Loaded chat room with roomId: ${roomId}`);
