@@ -1,5 +1,115 @@
-.info-container {
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
     display: flex;
     justify-content: center;
     align-items: center;
+    min-height: 100vh;
+    background-color: #121212;
+    font-family: Arial, sans-serif;
+    color: #d1d1d1;
+}
+
+.info-container {
+    width: 80%;
+    max-width: 400px;
+    background-color: #1c1c1c;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+#login-header {
+    font-size: 1.5em;
+    text-align: center;
+    margin-bottom: 20px;
+    color: #e8e8e8;
+}
+
+.info {
+    margin-bottom: 15px;
+}
+
+.info input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #444444;
+    border-radius: 5px;
+    background-color: #252525;
+    color: #e8e8e8;
+    font-size: 1em;
+}
+
+#register {
+    width: 100%;
+    padding: 10px;
+    margin-top: 10px;
+    font-size: 1em;
+    color: #ffffff;
+    background-color: #f8a145;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+#register:hover {
+    background-color: #CC5500;
+}
+
+.login-link {
+    margin-top: 15px;
+    text-align: center;
+    color: #b9bbbe;
+}
+
+.login-link a {
+    color: #f8a145;
+    text-decoration: none;
+}
+
+.login-link a:hover {
+    text-decoration: underline;
+}
+
+#message {
+    margin-top: 15px;
+    padding: 10px;
+    border-radius: 5px;
+    text-align: center;
+}
+
+#message.error {
+    background-color: rgba(220, 53, 69, 0.2);
+    color: #ff6b6b;
+    border: 1px solid #dc3545;
+}
+
+#message.success {
+    background-color: rgba(40, 167, 69, 0.2);
+    color: #51cf66;
+    border: 1px solid #28a745;
+}
+
+.message-container {
+    margin: 10px 0;
+    padding: 10px;
+    border-radius: 5px;
+    text-align: center;
+}
+
+.message-container.error {
+    background-color: rgba(220, 53, 69, 0.2);
+    color: #ff6b6b;
+    border: 1px solid #dc3545;
+}
+
+.message-container.success {
+    background-color: rgba(40, 167, 69, 0.2);
+    color: #51cf66;
+    border: 1px solid #28a745;
 }

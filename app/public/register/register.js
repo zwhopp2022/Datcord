@@ -6,6 +6,12 @@ let register = document.getElementById("register");
 let messageContainer = document.getElementById("message");
 let form = document.getElementById("register-form");
 
+function showMessage(message, type) {
+    const messageContainer = document.getElementById("message");
+    messageContainer.textContent = message;
+    messageContainer.className = `message-container ${type}`;
+}
+
 form.addEventListener("submit", (event) => {
     let userVal = username.value;
     let passVal = password.value;
@@ -15,8 +21,7 @@ form.addEventListener("submit", (event) => {
     event.preventDefault();
 
     if (passVal !== confirmPassVal) {
-        messageContainer.style.color = "red";
-        messageContainer.textContent = "Passwords do not match!";
+        showMessage("Passwords do not match!", "error");
     } else {
         messageContainer.textContent = "";
         fetch('http://localhost:3000/add-user', {
@@ -28,16 +33,11 @@ form.addEventListener("submit", (event) => {
         }).then(response => {
             response.json().then((body) => {
                 if (response.ok) {
-                    messageContainer.style.color = "green";
-                    messageContainer.textContent = "Account successfully created!";
+                    showMessage("Account successfully created!", "success");
                 } else if (response.status === 400) {
-                    console.log("bad");
-                    console.log(body);
-                    messageContainer.style.color = "red";
-                    messageContainer.textContent = body.message;
+                    showMessage(body.message || body.error, "error");
                 } else {
-                    messageContainer.style.color = "red";
-                    messageContainer.textContent = body.error;
+                    showMessage(body.error, "error");
                 }
             })
         });
