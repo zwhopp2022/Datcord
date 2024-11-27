@@ -57,7 +57,21 @@ CREATE TABLE IF NOT EXISTS Messages (
     sentMessage VARCHAR(1000),
     sentBy VARCHAR(16),
     roomCode VARCHAR(4) NOT NULL,
+    thumbsUp INT DEFAULT 0,
+    thumbsDown INT DEFAULT 0,
+    eggplant INT DEFAULT 0,
+    neutralFace INT DEFAULT 0,
     FOREIGN KEY (roomCode) REFERENCES Rooms(code)
+);
+
+CREATE TABLE IF NOT EXISTS MessageReactions (
+    id SERIAL PRIMARY KEY,
+    message_id INTEGER NOT NULL,
+    reaction_type VARCHAR(16) NOT NULL,
+    username VARCHAR(16) NOT NULL,
+    FOREIGN KEY (message_id) REFERENCES Messages(id) ON DELETE CASCADE,
+    FOREIGN KEY (username) REFERENCES Users(username) ON DELETE CASCADE,
+    UNIQUE(message_id, reaction_type, username)
 );
 
 -- making sure there is a single row in database per pair
