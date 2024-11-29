@@ -20,7 +20,12 @@ const env = require("../appsettings.json");
 const Pool = pg.Pool;
 const pool = new Pool(env);
 let server = http.createServer(app);
-let io = new Server(server);
+let io = new Server(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
 let rooms = {};
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -28,7 +33,7 @@ app.use(express.json());
 app.use(cookieParser());
 
 app.use(cors({
-    origin: `http://${hostname}:3001`,  // Allow requests from this specific origin
+    origin: true,  // Allow all origins
     credentials: true
 }));
 
@@ -781,7 +786,22 @@ async function addGroupMessageChat(roomCode, title, usernames) {
     return true;
 }
 
-
+// Check if two users are friends (not just a pending request)
+async function areFriends(userOne, userTwo) {
+    try {
+        const result = await pool.query(
+            `SELECT 1 FROM Friends 
+             WHERE ((usernameOne = $1 AND usernameTwo = $2) 
+             OR (usernameOne = $2 AND usernameTwo = $1))
+             AND isFriendRequest = FALSE`,
+            [userOne, userTwo]
+        );
+        return result.rows.length > 0;
+    } catch (error) {
+        console.error("Error in areFriends check:", error);
+        return false;
+    }
+}
 
 // creates a new 'chat' in database with room code and two usernames
 // for direct messaging purposes only
@@ -789,6 +809,13 @@ app.post("/create-direct-message", async (req, res) => {
     let body = req.body;
 
     if (validateDirectMessageCreation(body)) {
+        // First check if they are friends
+        if (!(await areFriends(body["usernameOne"], body["usernameTwo"]))) {
+            return res.status(403).json({ 
+                "message": "Cannot create chat: users must be friends first" 
+            });
+        }
+
         if (!(await searchDirectMessages(body["usernameOne"], body["usernameTwo"]))) { 
             let roomId = await generateRoomCode();
             await saveRoom(roomId);
@@ -942,55 +969,193 @@ app.get("/get-messages", async (req, res) => {
 });
 
 
-io.on("connection", (socket) => {
-    console.log(`Socket ${socket.id} connected`);
-
-    let roomId = socket.handshake.query.roomId;
-    // console.log("Room ID from query:", roomId);
-
-    if (!searchRoom(roomId)) {
-        return;
+// Socket.io connection handling
+io.on('connection', (socket) => {
+    const roomId = socket.handshake.query.roomId;
+    console.log(`Client connected to room ${roomId}`);
+    
+    if (roomId) {
+        socket.join(roomId);
+        console.log(`Socket ${socket.id} joined room ${roomId}`);
     }
 
-    // add socket object to room so other sockets in same room
-    // can send messages to it later
-    rooms[roomId][socket.id] = socket;
-
-    /* MUST REGISTER socket.on(event) listener FOR EVERY event CLIENT CAN SEND */
-
-    socket.on("disconnect", () => {
-        console.log(`Socket ${socket.id} disconnected`);
-        delete rooms[roomId][socket.id];
+    socket.on('disconnect', () => {
+        if (roomId) {
+            socket.leave(roomId);
+            console.log(`Socket ${socket.id} left room ${roomId}`);
+        }
     });
 
     socket.on("messageBroadcast", async (data) => {
         const { message, username } = data;
-
-        await storeMessage(message, username, roomId);
-
-
-        for (let otherSocket of Object.values(rooms[roomId])) {
-            if (otherSocket.id === socket.id) {
-                continue;
-            }
-            otherSocket.emit("messageBroadcast", { message, username });
-        }
+        socket.to(roomId).emit("messageBroadcast", { message, username });
     });
-
 });
 
-async function storeMessage(message, username, roomId) {
-    console.log("got here");
+// API endpoint to handle message reactions
+app.post("/react-to-message", async (req, res) => {
     try {
-        await pool.query(
-            `INSERT INTO Messages (sentMessage, sentBy, roomCode) VALUES($1, $2, $3)`,
-            [message, username, roomId]
-        );
-    } catch (error) {
-        console.log(`Error inserting message into database: ${error}`);
-    }
-}
+        const { sentBy, sentMessage, roomCode, reactionType, reactingUser } = req.body;
+        
+        // Map camelCase reaction types to lowercase database column names
+        const columnMap = {
+            'thumbsUp': 'thumbsup',
+            'thumbsDown': 'thumbsdown',
+            'neutralFace': 'neutralface',
+            'eggplant': 'eggplant'
+        };
 
+        // Validate the reaction type
+        if (!columnMap[reactionType]) {
+            return res.status(400).json({ success: false, error: 'Invalid reaction type' });
+        }
+
+        const columnName = columnMap[reactionType];
+
+        // Begin transaction
+        await pool.query('BEGIN');
+
+        // Check if user has already reacted
+        const existingReaction = await pool.query(
+            `SELECT id FROM MessageReactions 
+             WHERE message_id = (
+                SELECT id FROM Messages 
+                WHERE sentBy = $1 AND sentMessage = $2 AND roomCode = $3
+             )
+             AND reaction_type = $4 
+             AND username = $5`,
+            [sentBy, sentMessage, roomCode, columnName, reactingUser]
+        );
+
+        let newCount;
+        const messageResult = await pool.query(
+            `SELECT id, ${columnName} as count FROM Messages 
+             WHERE sentBy = $1 AND sentMessage = $2 AND roomCode = $3`,
+            [sentBy, sentMessage, roomCode]
+        );
+
+        if (messageResult.rows.length === 0) {
+            await pool.query('ROLLBACK');
+            return res.status(404).json({ success: false, error: 'Message not found' });
+        }
+
+        const messageId = messageResult.rows[0].id;
+
+        if (existingReaction.rows.length > 0) {
+            // User has already reacted - remove their reaction
+            await pool.query(
+                `DELETE FROM MessageReactions 
+                 WHERE message_id = $1 AND reaction_type = $2 AND username = $3`,
+                [messageId, columnName, reactingUser]
+            );
+
+            // Decrease the count in Messages table
+            const updateResult = await pool.query(
+                `UPDATE Messages 
+                 SET ${columnName} = ${columnName} - 1 
+                 WHERE id = $1 
+                 RETURNING ${columnName} as "newCount"`,
+                [messageId]
+            );
+            newCount = updateResult.rows[0].newCount;
+        } else {
+            // User hasn't reacted - add their reaction
+            await pool.query(
+                `INSERT INTO MessageReactions (message_id, reaction_type, username) 
+                 VALUES ($1, $2, $3)`,
+                [messageId, columnName, reactingUser]
+            );
+
+            // Increase the count in Messages table
+            const updateResult = await pool.query(
+                `UPDATE Messages 
+                 SET ${columnName} = ${columnName} + 1 
+                 WHERE id = $1 
+                 RETURNING ${columnName} as "newCount"`,
+                [messageId]
+            );
+            newCount = updateResult.rows[0].newCount;
+        }
+
+        await pool.query('COMMIT');
+
+        // Emit socket event for real-time updates
+        io.to(roomCode).emit('reactionUpdate', {
+            sentBy,
+            sentMessage,
+            roomCode,
+            reactionType,
+            newCount,
+            reactingUser,
+            hasReacted: existingReaction.rows.length === 0
+        });
+
+        res.json({ 
+            success: true, 
+            newCount,
+            hasReacted: existingReaction.rows.length === 0
+        });
+    } catch (error) {
+        await pool.query('ROLLBACK');
+        console.error('Error handling reaction:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Internal server error' 
+        });
+    }
+});
+
+// API endpoint to get reaction counts and user's reaction status
+app.post("/get-reaction-counts", async (req, res) => {
+    try {
+        const { sentBy, sentMessage, roomCode, currentUser } = req.body;
+
+        const messageResult = await pool.query(
+            `SELECT id, thumbsup as "thumbsUp", 
+                    thumbsdown as "thumbsDown", 
+                    neutralface as "neutralFace", 
+                    eggplant 
+             FROM Messages 
+             WHERE sentBy = $1 AND sentMessage = $2 AND roomCode = $3`,
+            [sentBy, sentMessage, roomCode]
+        );
+
+        if (messageResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Message not found' });
+        }
+
+        const messageId = messageResult.rows[0].id;
+        const counts = messageResult.rows[0];
+
+        // Get user's reactions
+        const userReactions = await pool.query(
+            `SELECT reaction_type FROM MessageReactions 
+             WHERE message_id = $1 AND username = $2`,
+            [messageId, currentUser]
+        );
+
+        const userReactionTypes = userReactions.rows.map(row => {
+            // Map database column names back to camelCase
+            const columnToReaction = {
+                'thumbsup': 'thumbsUp',
+                'thumbsdown': 'thumbsDown',
+                'neutralface': 'neutralFace',
+                'eggplant': 'eggplant'
+            };
+            return columnToReaction[row.reaction_type];
+        });
+
+        res.json({
+            ...counts,
+            userReactions: userReactionTypes
+        });
+    } catch (error) {
+        console.error('Error getting reaction counts:', error);
+        res.status(500).json({ 
+            error: 'Internal server error' 
+        });
+    }
+});
 
 //  server startup
 server.listen(port, hostname, () => {
