@@ -16,7 +16,7 @@ const app = express();
 const port = 3000;
 const hostname = "localhost";
 
-const env = require("../appsettings.json");
+const env = require("../appsettings.local.json");
 const Pool = pg.Pool;
 const pool = new Pool(env);
 let server = http.createServer(app);
@@ -625,11 +625,10 @@ function printRooms() {
 
 function validateDirectMessageCreation(body) {
     if (body.hasOwnProperty("usernameOne") && body.hasOwnProperty("usernameTwo") && body.hasOwnProperty("title")) {
-        if ((body["usernameOne"].length >= 1 && body["usernameOne"].length <= 16) && 
+        if ((body["usernameOne"].length >= 1 && body["usernameOne"].length <= 16) &&
             (body["usernameTwo"].length >= 1 && body["usernameTwo"].length <= 16) &&
             (body["title"].length >= 1 && body["title"].length <= 33)
-        ) 
-        {   
+        ) {
             console.log("sub 1");
             return true;
         } else {
@@ -661,8 +660,7 @@ function validateGroupMessageCreation(body) {
         if (
             (body["title"].length >= 1 && body["title"].length <= 16) &&
             validateUsernamesForGroupCreation(body["usernames"])
-        ) 
-        {
+        ) {
             return true;
         } else {
             return false;
@@ -742,13 +740,13 @@ async function addDirectMessageChat(roomCode, title, usernameOne, usernameTwo) {
             RETURNING roomId`,
         [roomCode, title]
     ).then(() => {
-    pool.query(
-        `INSERT INTO ChatAssociations (roomId, username)
+        pool.query(
+            `INSERT INTO ChatAssociations (roomId, username)
             VALUES ($1, $2)`,
-        [roomCode, usernameOne]
+            [roomCode, usernameOne]
         )
     }).then(() => {
-    pool.query(
+        pool.query(
             `INSERT INTO ChatAssociations (roomId, username)
                 VALUES ($1, $2)`,
             [roomCode, usernameTwo]
@@ -778,7 +776,7 @@ async function addGroupMessageChat(roomCode, title, usernames) {
                 [roomCode, username]
             );
         }
-        
+
     } catch (error) {
         console.log(error.message);
         return false;
@@ -811,12 +809,12 @@ app.post("/create-direct-message", async (req, res) => {
     if (validateDirectMessageCreation(body)) {
         // First check if they are friends
         if (!(await areFriends(body["usernameOne"], body["usernameTwo"]))) {
-            return res.status(403).json({ 
-                "message": "Cannot create chat: users must be friends first" 
+            return res.status(403).json({
+                "message": "Cannot create chat: users must be friends first"
             });
         }
 
-        if (!(await searchDirectMessages(body["usernameOne"], body["usernameTwo"]))) { 
+        if (!(await searchDirectMessages(body["usernameOne"], body["usernameTwo"]))) {
             let roomId = await generateRoomCode();
             await saveRoom(roomId);
             if (await addDirectMessageChat(roomId, body["title"], body["usernameOne"], body["usernameTwo"])) {
@@ -843,7 +841,7 @@ app.post("/create-group-message", async (req, res) => {
     let body = req.body;
 
     if (validateGroupMessageCreation(body)) {
-        if (!(await searchGroupMessages(body["title"]))) { 
+        if (!(await searchGroupMessages(body["title"]))) {
             let roomId = await generateRoomCode();
             await saveRoom(roomId);
             if (await addGroupMessageChat(roomId, body["title"], body["usernames"])) {
@@ -973,7 +971,7 @@ app.get("/get-messages", async (req, res) => {
 io.on('connection', (socket) => {
     const roomId = socket.handshake.query.roomId;
     console.log(`Client connected to room ${roomId}`);
-    
+
     if (roomId) {
         socket.join(roomId);
         console.log(`Socket ${socket.id} joined room ${roomId}`);
@@ -996,7 +994,7 @@ io.on('connection', (socket) => {
 app.post("/react-to-message", async (req, res) => {
     try {
         const { sentBy, sentMessage, roomCode, reactionType, reactingUser } = req.body;
-        
+
         // Map camelCase reaction types to lowercase database column names
         const columnMap = {
             'thumbsUp': 'thumbsup',
@@ -1090,17 +1088,17 @@ app.post("/react-to-message", async (req, res) => {
             hasReacted: existingReaction.rows.length === 0
         });
 
-        res.json({ 
-            success: true, 
+        res.json({
+            success: true,
             newCount,
             hasReacted: existingReaction.rows.length === 0
         });
     } catch (error) {
         await pool.query('ROLLBACK');
         console.error('Error handling reaction:', error);
-        res.status(500).json({ 
-            success: false, 
-            error: 'Internal server error' 
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error'
         });
     }
 });
@@ -1151,8 +1149,8 @@ app.post("/get-reaction-counts", async (req, res) => {
         });
     } catch (error) {
         console.error('Error getting reaction counts:', error);
-        res.status(500).json({ 
-            error: 'Internal server error' 
+        res.status(500).json({
+            error: 'Internal server error'
         });
     }
 });

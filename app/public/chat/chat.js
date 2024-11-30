@@ -6,16 +6,16 @@ let button = document.getElementById("send-button");
 let input = document.getElementById("message-input");
 let messagesDiv = document.getElementById("chat-container");
 
-function appendMessage(username, message, isSelf = false) {
+function appendMessage(messageUsername, message, isSelf = false) {
     let item = document.createElement("div");
     item.className = "message-item";
-    item.dataset.username = username;
+    item.dataset.username = messageUsername;
     item.dataset.message = message;
 
     let usernameSpan = document.createElement("span");
     usernameSpan.className = "message-username";
-    usernameSpan.textContent = username;
-    
+    usernameSpan.textContent = messageUsername;
+
     usernameSpan.classList.add(isSelf ? "self" : "other-user");
 
     let messageSpan = document.createElement("span");
@@ -37,27 +37,86 @@ function appendMessage(username, message, isSelf = false) {
         reactionButton.className = "reaction-button";
         reactionButton.dataset.reactionType = reaction.type;
         reactionButton.innerHTML = `${reaction.emoji} <span class="reaction-count">0</span>`;
-        
+
         reactionButton.addEventListener("click", () => {
             handleReaction(username, message, roomId, reaction.type);
         });
-        
+
         reactionsDiv.appendChild(reactionButton);
     });
+
+    let editSpan = document.createElement("span");
+    editSpan.className = "message-edit";
+
+    let editButton = document.createElement("button");
+    editButton.className = "edit-button";
+    editButton.dataset.roomId = roomId;
+    editButton.textContent = "✏️";
+
+    editButton.addEventListener("click", () => {
+        editButton.style.display = "none";
+
+        let newMessage = document.createElement("input");
+        newMessage.type = "text";
+        newMessage.className = "message-edit-input";
+        newMessage.value = message;
+
+        let saveButton = document.createElement("button");
+        saveButton.className = "save-button";
+        saveButton.textContent = "✅";
+
+        let cancelButton = document.createElement("button");
+        cancelButton.className = "cancel-button";
+        cancelButton.textContent = "🚫";
+
+        let interactiveEditSpan = document.createElement("span");
+        interactiveEditSpan.className = "message-text";
+
+        saveButton.addEventListener("click", () => {
+            let newMessageToSave = newMessage.value;
+            if (newMessageToSave) { // we shouldn't allow empty messages
+                messageSpan.textContent = newMessageToSave;
+                item.dataset.message = newMessage;
+                messageSpan.style.display = "inline";
+                editButton.style.display = "inline";
+
+
+                interactiveEditSpan.remove();
+            }
+        });
+
+        cancelButton.addEventListener("click", () => {
+            messageSpan.style.display = "inline";
+            editButton.style.display = "inline";
+            interactiveEditSpan.remove();
+        });
+
+        interactiveEditSpan.appendChild(newMessage);
+        interactiveEditSpan.appendChild(saveButton);
+        interactiveEditSpan.appendChild(cancelButton);
+
+        messageSpan.style.display = "none";
+        item.insertBefore(interactiveEditSpan, reactionsDiv);
+    });
+
+    if (messageUsername === username) {
+        editSpan.appendChild(editButton);
+    }
+    reactionsDiv.appendChild(editSpan);
 
     item.appendChild(usernameSpan);
     item.appendChild(messageSpan);
     item.appendChild(reactionsDiv);
     messagesDiv.appendChild(item);
-    
+
     loadReactionCounts(username, message, roomId, item);
-    
+
     scrollToBottom();
 }
 
 function scrollToBottom() {
     console.log("Before Scroll - scrollTop:", messagesDiv.scrollTop, "scrollHeight:", messagesDiv.scrollHeight, "clientHeight:", messagesDiv.clientHeight);
-    
+
     if (messagesDiv.scrollHeight > messagesDiv.clientHeight) {
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
@@ -81,15 +140,15 @@ button.addEventListener("click", () => {
     if (message.trim() === "") {
         return;
     }
-    
+
     const username = getCookie("username");
-    
+
     socket.emit("messageBroadcast", {
         message: message,
         username: username,
         roomId: roomId
     });
-    
+
     appendMessage(username, message, true);
     input.value = "";
     fetch(`http://localhost:3000/save-message`, {
@@ -98,7 +157,7 @@ button.addEventListener("click", () => {
             "Content-Type": "application/json",
         },
         method: "POST",
-        credentials: 'include',  
+        credentials: 'include',
         body: JSON.stringify({
             "sentMessage": message,
             "sentBy": username,
@@ -157,8 +216,8 @@ let socket = io('http://localhost:3000', {
     query: { roomId: roomId }
 });
 
-socket.on("connect", () => { 
-    console.log("Connected to server", socket.id); 
+socket.on("connect", () => {
+    console.log("Connected to server", socket.id);
     console.log("Connection query:", socket.io.opts.query);
 });
 
@@ -210,7 +269,7 @@ async function handleReaction(messageUsername, message, roomId, reactionType) {
 function updateReactionDisplay(messageUsername, message, reactionType, newCount, hasReacted) {
     const messageElements = document.querySelectorAll('.message-item');
     for (let element of messageElements) {
-        if (element.dataset.username === messageUsername && 
+        if (element.dataset.username === messageUsername &&
             element.dataset.message === message) {
             const reactionButton = element.querySelector(`button[data-reaction-type="${reactionType}"]`);
             if (reactionButton) {
@@ -242,12 +301,12 @@ async function loadReactionCounts(messageUsername, message, roomId, messageEleme
         if (response.ok) {
             const data = await response.json();
             const reactionButtons = messageElement.querySelectorAll('.reaction-button');
-            
+
             reactionButtons.forEach(button => {
                 const reactionType = button.dataset.reactionType;
                 const countSpan = button.querySelector('.reaction-count');
                 countSpan.textContent = data[reactionType] || 0;
-                
+
                 if (data.userReactions.includes(reactionType)) {
                     button.classList.add('active');
                 }
@@ -262,15 +321,15 @@ async function loadReactionCounts(messageUsername, message, roomId, messageEleme
 socket.on('reactionUpdate', (data) => {
     const { sentBy, sentMessage, reactionType, newCount, hasReacted, reactingUser } = data;
     const messageElements = document.querySelectorAll('.message-item');
-    
+
     for (let element of messageElements) {
-        if (element.dataset.username === sentBy && 
+        if (element.dataset.username === sentBy &&
             element.dataset.message === sentMessage) {
             const reactionButton = element.querySelector(`button[data-reaction-type="${reactionType}"]`);
             if (reactionButton) {
                 const countSpan = reactionButton.querySelector('.reaction-count');
                 countSpan.textContent = newCount;
-                
+
                 // Only update the active state if this is the current user's reaction
                 if (reactingUser === username) {
                     reactionButton.classList.toggle('active', hasReacted);

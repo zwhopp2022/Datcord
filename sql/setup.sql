@@ -6,7 +6,8 @@ DROP TABLE Friends CASCADE;
 DROP TABLE Rooms CASCADE;
 DROP TABLE Chats CASCADE;
 DROP TABLE ChatAssociations CASCADE;
-
+DROP TABLE Messages CASCADE;
+DROP TABLE MessageReactions CASCADE;
 
 -- table for Users 
 CREATE TABLE IF NOT EXISTS Users (
@@ -60,7 +61,7 @@ CREATE TABLE IF NOT EXISTS Messages (
     thumbsUp INT DEFAULT 0,
     thumbsDown INT DEFAULT 0,
     eggplant INT DEFAULT 0,
-    neutralFace INT DEFAULT 0,
+    neutralface INT DEFAULT 0,
     FOREIGN KEY (roomCode) REFERENCES Rooms(code)
 );
 
