@@ -932,10 +932,11 @@ app.post("/save-message", (req, res) => {
         const { sentMessage, sentBy, roomCode } = body;
 
         pool.query(
-            "INSERT INTO Messages (sentMessage, sentBy, roomCode) VALUES ($1, $2, $3) RETURNING *",
+            "INSERT INTO Messages (sentMessage, sentBy, roomCode) VALUES ($1, $2, $3) RETURNING id",
             [sentMessage, sentBy, roomCode]
         ).then(result => {
-            res.status(200).json({ "result": true });
+            let messageId = result.rows[0].id;
+            res.status(200).json({ "result": true, "messageId": messageId });
         }).catch(error => {
             console.error("Error saving message:", error.message);
             res.status(500).json({ "message": "Internal server error" });
@@ -966,6 +967,24 @@ app.get("/get-messages", async (req, res) => {
     });
 });
 
+app.put("/edit-message", async (req, res) => {
+    let { editedMessage, messageId, roomCode } = req.body;
+
+    await pool.query(
+        "UPDATE Messages SET sentMessage = $1 WHERE id = $2 AND roomCode = $3",
+        [editedMessage, messageId, roomCode]
+    ).then(result => {
+        res.status(200).send();
+    }).catch(error => {
+        console.error("Error editing message: ", error.message);
+        res.status(500).json({ error: "Error editing message" });
+    });
+
+    io.to(roomCode).emit('messageUpdate', {
+        messageId: messageId,
+        editedMessage: editedMessage,
+    });
+});
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
@@ -985,8 +1004,8 @@ io.on('connection', (socket) => {
     });
 
     socket.on("messageBroadcast", async (data) => {
-        const { message, username } = data;
-        socket.to(roomId).emit("messageBroadcast", { message, username });
+        const { message, username, messageId } = data;
+        socket.to(roomId).emit("messageBroadcast", { message, username, messageId });
     });
 });
 

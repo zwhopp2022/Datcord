@@ -6,11 +6,12 @@ let button = document.getElementById("send-button");
 let input = document.getElementById("message-input");
 let messagesDiv = document.getElementById("chat-container");
 
-function appendMessage(messageUsername, message, isSelf = false) {
+function appendMessage(messageUsername, message, messageId, isSelf = false) {
     let item = document.createElement("div");
     item.className = "message-item";
     item.dataset.username = messageUsername;
     item.dataset.message = message;
+    item.dataset.messageid = messageId;
 
     let usernameSpan = document.createElement("span");
     usernameSpan.className = "message-username";
@@ -74,12 +75,34 @@ function appendMessage(messageUsername, message, isSelf = false) {
 
         saveButton.addEventListener("click", () => {
             let newMessageToSave = newMessage.value;
+            let messageId = item.dataset.messageid;
             if (newMessageToSave) { // we shouldn't allow empty messages
                 messageSpan.textContent = newMessageToSave;
-                item.dataset.message = newMessage;
+                item.dataset.message = newMessageToSave;
                 messageSpan.style.display = "inline";
                 editButton.style.display = "inline";
 
+                fetch(`http://localhost:3000/edit-message`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        editedMessage: newMessageToSave,
+                        messageId: messageId,
+                        roomCode: roomId
+                    })
+                }).then(response => {
+                    if (response.ok) {
+                        return response.json();
+                    } else {
+                        console.log("failed to edit message");
+                    }
+                }).catch(error => {
+                    console.log(error.message);
+                });
 
                 interactiveEditSpan.remove();
             }
@@ -143,13 +166,6 @@ button.addEventListener("click", () => {
 
     const username = getCookie("username");
 
-    socket.emit("messageBroadcast", {
-        message: message,
-        username: username,
-        roomId: roomId
-    });
-
-    appendMessage(username, message, true);
     input.value = "";
     fetch(`http://localhost:3000/save-message`, {
         headers: {
@@ -172,6 +188,16 @@ button.addEventListener("click", () => {
     }).then(body => {
         if (body["result"]) {
             // handle sent status
+            console.log(body);
+            let messageId = body.messageId;
+            console.log(messageId);
+            socket.emit("messageBroadcast", {
+                message: message,
+                username: username,
+                roomId: roomId,
+                messageId: messageId
+            });
+            appendMessage(username, message, messageId, true);
         } else {
             // handle error status
         }
@@ -202,9 +228,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     }).then(body => {
         for (let message of body.result) {
             if (message["sentby"] === username) {
-                appendMessage(message["sentby"], message["sentmessage"], true);
+                appendMessage(message["sentby"], message["sentmessage"], message["messageid"], true);
             } else {
-                appendMessage(message["sentby"], message["sentmessage"], false);
+                appendMessage(message["sentby"], message["sentmessage"], message["messageid"], false);
             }
         }
     }).catch(error => {
@@ -225,9 +251,18 @@ socket.on("connect_error", (error) => {
     console.error("Connection Error:", error);
 });
 
+socket.on('messageUpdate', (data) => {
+    let messageDiv = document.querySelector(`[data-messageid="${data.messageId}"]`);
+
+    if (messageDiv) {
+        let messageSpan = messageDiv.querySelector('.message-text');
+        messageSpan.textContent = data.editedMessage;
+    }
+});
+
 socket.on("messageBroadcast", (data) => {
-    const { username, message } = data;
-    appendMessage(username, message, false);
+    const { username, message, messageId } = data;
+    appendMessage(username, message, messageId, false);
 });
 
 socket.on("connect", () => {
