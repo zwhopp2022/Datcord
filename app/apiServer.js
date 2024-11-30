@@ -16,7 +16,7 @@ const app = express();
 const port = 3000;
 const hostname = "localhost";
 
-const env = require("../appsettings.local.json");
+const env = require("../appsettings.json");
 const Pool = pg.Pool;
 const pool = new Pool(env);
 let server = http.createServer(app);
