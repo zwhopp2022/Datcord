@@ -36,15 +36,19 @@ body {
 /* Chat Container */
 #chat-container {
     flex: 1;
-    overflow-y: auto; /* Enables scrolling */
-    max-height: 100%; /* Set your preferred max height */
+    overflow-y: auto;
+    /* Enables scrolling */
+    max-height: 100%;
+    /* Set your preferred max height */
     padding: 20px;
     margin-bottom: 20px;
     background-color: #1c1c1c;
     border-radius: 8px;
     display: flex;
-    flex-direction: column; /* Stack messages vertically */
-    gap: 10px; /* Add spacing between messages */
+    flex-direction: column;
+    /* Stack messages vertically */
+    gap: 10px;
+    /* Add spacing between messages */
 }
 
 /* Message Input Container */
@@ -150,41 +154,123 @@ body {
     margin: 10px 0;
     padding: 10px 15px;
     border-radius: 10px;
-    background-color: #bfbfbf; /* Slightly darker gray */
+    background-color: #bfbfbf;
+    /* Slightly darker gray */
     max-width: 80%;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-    word-wrap: break-word; /* Ensure word wrapping for long text */
+    word-wrap: break-word;
+    /* Ensure word wrapping for long text */
     word-break: break-word;
-    white-space: pre-wrap; /* Preserve spaces and break lines */
+    white-space: pre-wrap;
+    /* Preserve spaces and break lines */
 }
 
 /* Username Styling */
 .message-username {
     font-weight: bold;
     margin-bottom: 5px;
-    word-wrap: break-word; /* Wrap long usernames */
+    word-wrap: break-word;
+    /* Wrap long usernames */
 }
 
 .message-username.self {
-    color: #e69a0e; /* Darker orange for the current user */
+    color: #e69a0e;
+    /* Darker orange for the current user */
 }
 
 .message-username.other-user {
-    color: #d35400; /* Reddish orange for other users */
+    color: #d35400;
+    /* Reddish orange for other users */
 }
+
 
 /* Message Text Styling */
 .message-text {
     color: #000000;
     word-wrap: break-word;
-    white-space: pre-wrap; /* Preserve formatting */
-    overflow-wrap: break-word; /* Break long words if needed */
+    white-space: pre-wrap;
+    /* Preserve formatting */
+    overflow-wrap: break-word;
+    /* Break long words if needed */
+}
+
+.message-edit {
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.1s ease-in-out;
+    margin-left: auto;
+}
+
+.edit-button {
+    background: none;
+    border: 1px solid #e3e5e8;
+    border-radius: 4px;
+    font-size: 18px;
+    padding: 4px 8px;
+}
+
+.save-button {
+    background: none;
+    border: 1px solid #e3e5e8;
+    border-radius: 4px;
+    font-size: 14px;
+    padding: 4px 8px;
+}
+
+.cancel-button {
+    background: none;
+    border: 1px solid #e3e5e8;
+    border-radius: 4px;
+    font-size: 14px;
+    padding: 4px 8px;
+}
+
+.save-button:hover {
+    background-color: #f2f3f5;
+    transform: scale(1.05);
+}
+
+.save-button.active {
+    background-color: #e3e5e8;
+    border-color: #4f545c;
+}
+
+.cancel-button:hover {
+    background-color: #f2f3f5;
+    transform: scale(1.05);
+}
+
+.cancel-button.active {
+    background-color: #e3e5e8;
+    border-color: #4f545c;
+}
+
+.edit-button:hover {
+    background-color: #f2f3f5;
+    transform: scale(1.05);
+}
+
+.edit-button.active {
+    background-color: #e3e5e8;
+    border-color: #4f545c;
+}
+
+.message-edit-input {
+    background: none;
+    border: 1px solid #e3e5e8;
+    border-radius: 4px;
+}
+
+.message-item:hover .message-edit {
+    visibility: visible;
+    opacity: 1
 }
 
 .message-reactions {
     display: flex;
     gap: 8px;
     margin-top: 4px;
+    width: 100%;
 }
 
 .reaction-button {
