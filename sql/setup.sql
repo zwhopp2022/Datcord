@@ -53,6 +53,20 @@ CREATE TABLE IF NOT EXISTS ChatAssociations (
     FOREIGN KEY (username) REFERENCES Users(username)
 );
 
+CREATE TABLE IF NOT EXISTS Servers (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(40) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS ServersToUsers (
+    id SERIAL PRIMARY KEY,
+    serverName VARCHAR(40) NOT NULL,
+    user VARCHAR(16) NOT NULL,
+    FOREIGN KEY (serverName) REFERENCES Servers(name),
+    FOREIGN KEY (user) REFERNCES Users(username)
+);
+
+
 CREATE TABLE IF NOT EXISTS Messages (
     id SERIAL PRIMARY KEY,
     sentMessage VARCHAR(1000),

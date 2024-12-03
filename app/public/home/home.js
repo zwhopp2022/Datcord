@@ -136,6 +136,55 @@ function promptNewDirectMessageChat() {
     newChatContainer.appendChild(messageContainer);
 }
 
+function promptNewServer() {
+    while (newChatContainer.firstChild) {
+        newChatContainer.removeChild(newChatContainer.firstChild);
+    }
+
+    let messageContainer = document.createElement("div");
+    let nameInput = document.createElement("input");
+    let cancelButton = document.createElement("button");
+    let createButton = document.createElement("button");
+
+    cancelButton.classList.add("chat-btn");
+    createButton.classList.add("chat-btn");
+
+    cancelButton.id = "cancel-button";
+    createButton.id = "create-button";
+    nameInput.id = "name-input";
+    messageContainer.id = "message-container";
+
+    // Adding placeholder text
+    nameInput.style.width = "100%";
+    nameInput.style.padding = "10px";
+    nameInput.style.borderRadius = "15px";
+    nameInput.style.marginBottom = "10px"; 
+    nameInput.style.border = "1px solid #ccc";
+    nameInput.placeholder = "Enter the server name here";  // Placeholder text
+
+    cancelButton.style.marginRight = "2px";
+    cancelButton.style.width = "48%";
+    cancelButton.textContent = "Cancel";
+    createButton.style.marginLeft = "2px"; 
+    createButton.style.width = "48%";
+    createButton.textContent = "Create";
+
+    cancelButton.addEventListener("click", cancelNewChat);
+    createButton.addEventListener("click", () => {
+        let newServerName = nameInput.value.trim();
+        if (newServerName != "") {
+            makeNewServer(newServerName, currentUser);
+        } else {
+            showMessage("Please enter a valid server name.", "error");
+        }
+    });
+
+    newChatContainer.appendChild(nameInput);
+    newChatContainer.appendChild(cancelButton);
+    newChatContainer.appendChild(createButton);
+    newChatContainer.appendChild(messageContainer);
+}
+
 function promptNewGroupChat() {
     while (newChatContainer.firstChild) {
         newChatContainer.removeChild(newChatContainer.firstChild);
@@ -192,6 +241,8 @@ function promptNewGroupChat() {
         userInputsContainer.appendChild(newInput);
     });
 
+    
+
     createButton.addEventListener("click", () => {
         let usernames = Array.from(userInputsContainer.getElementsByClassName("username-input"))
             .map(input => input.value.trim())
@@ -233,12 +284,20 @@ function clearDivAndMakeNewChatButtons() {
     newGroupChatButton.classList.add("chat-btn");
     newGroupChatButton.textContent = "New Group Chat";
 
+    let newServerButton = document.createElement("button");
+    newServerButton.id = "server-button";
+    newServerButton.classList.add("chat-btn");
+    newServerButton.textContent = "New Server";
+
     newDirectMessageButton.addEventListener("click", promptNewDirectMessageChat);
     newGroupChatButton.addEventListener("click", promptNewGroupChat);
+    newServerButton.addEventListener("click", promptNewServer);
+
     let messageContainer = document.createElement("div");
     messageContainer.id = "message-container";
     newChatContainer.appendChild(newDirectMessageButton);
     newChatContainer.appendChild(newGroupChatButton);
+    newChatContainer.appendChild(newServerButton);
     newChatContainer.appendChild(messageContainer);
 }
 

@@ -153,6 +153,15 @@ body {
 .chats {
     border-top: 2px solid #333;
     margin-top: 5%;
+    max-height: 40%;
+    overflow-y: auto;
+}
+
+#server-list {
+    border-top: 2px solid #333;
+    margin-top: 5%;
+    max-height: 40%;
+    overflow-y: auto;
 }
 
 .chat-btn {
