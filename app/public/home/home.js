@@ -351,18 +351,36 @@ function promptJoinServer() {
     joinButton.textContent = "Join";
 
     cancelButton.addEventListener("click", cancelNewChat);
-    createButton.addEventListener("click", () => {
-        let newServerName = nameInput.value.trim();
-        if (newServerName != "") {
-            makeNewServer(newServerName, currentUser);
-        } else {
-            showMessage("Please enter a valid server code.", "error");
-        }
-    });
 
-    newChatContainer.appendChild(nameInput);
+    joinButton.addEventListener("click", () => {
+        let serverCode = codeInput.value;
+        fetch("http://localhost:3000/join-server", {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                "Content-Type": "application/json",
+            },
+            method: "POST",
+            credentials: 'include',  // Ensures cookies are sent with the request
+            body: JSON.stringify({
+                "username": currentUser,
+                "serverCode": serverCode
+            })
+            }).then(response => response.json())
+            .then(body => {
+                if (body.result) {
+                    showMessage(`Joined server ${serverCode}`, "success");
+                    renderServersInPanel();
+                } else {
+                    showMessage(`Failed to join server`, "error");
+                }
+            }).catch(error => {
+                showMessage(error.message, "error");
+            });
+        });
+
+    newChatContainer.appendChild(codeInput);
     newChatContainer.appendChild(cancelButton);
-    newChatContainer.appendChild(createButton);
+    newChatContainer.appendChild(joinButton);
     newChatContainer.appendChild(messageContainer);
 }
 

@@ -90,7 +90,16 @@ async function getToken(username) {
 async function searchToken(token) {
     try {
         let result = await pool.query(`SELECT U.token FROM Users U WHERE U.token = $1`, [token]);
-        let result2 = await pool.query(`SELECT U.token FROM Users U WHERE U.token IS NOT NULL`);
+        return result.rows.length > 0;
+    } catch (error) {
+        console.log(`Error searching token: ${error}`);
+        return false;
+    }
+}
+
+async function searchToken(token) {
+    try {
+        let result = await pool.query(`SELECT U.token FROM Users U WHERE U.token = $1`, [token]);
         return result.rows.length > 0;
     } catch (error) {
         console.log(`Error searching token: ${error}`);
@@ -921,6 +930,33 @@ app.post("/remove-chat", async (req, res) => {
         console.error("Error removing chat:", error);
         await pool.query('ROLLBACK');
         return res.status(400).json({ message: "Error removing chat from database" });
+    }
+});
+
+app.post("/join-server", async (req, res) => {
+    let body = req.body;
+    let serverCode = body.serverCode;
+    let username = body.username;
+    if (!serverCode || serverCode.length !== 4 || !username) {
+        return res.status(400).json({ message: "Server code or username was either misformatted and not present"});
+    }
+
+    if (!searchServers(serverCode)) {
+        return res.status(400).json({ message: "Server does not exist"});
+    }
+    try {
+        await pool.query('BEGIN');
+
+        await pool.query(
+            `INSERT INTO ServersToUsers (code, username) VALUES ($1, $2)`,
+            [serverCode, username]
+        );
+
+        return res.status(200).json({ result: true });
+    } catch (error) {
+        console.error("Error joining server:", error);
+        await pool.query('ROLLBACK');
+        return res.status(400).json({ message: "Error joining server in database" });
     }
 });
 
