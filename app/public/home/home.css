@@ -153,6 +153,15 @@ body {
 .chats {
     border-top: 2px solid #333;
     margin-top: 5%;
+    max-height: 40%;
+    overflow-y: auto;
+}
+
+#server-list {
+    border-top: 2px solid #333;
+    margin-top: 5%;
+    max-height: 40%;
+    overflow-y: auto;
 }
 
 .chat-btn {
@@ -205,6 +214,18 @@ body {
     margin: 5px 0;
 }
 
+.server-box {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    background-color: #333;
+    padding: 10px;
+    border-radius: 10px;
+    color: white;
+    font-size: 16px;
+    margin: 5px 0;
+}
+
 .remove-button {
     width: 30px;
     height: 30px;
@@ -238,4 +259,8 @@ body {
 
 .username-button:hover {
     background-color: #555;
+}
+
+#current-chat {
+    padding: 5px;
 }

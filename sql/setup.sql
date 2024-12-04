@@ -8,6 +8,8 @@ DROP TABLE Chats CASCADE;
 DROP TABLE ChatAssociations CASCADE;
 DROP TABLE Messages CASCADE;
 DROP TABLE MessageReactions CASCADE;
+DROP TABLE Servers CASCADE;
+DROP TABLE ServersToUsers CASCADE;
 
 -- table for Users 
 CREATE TABLE IF NOT EXISTS Users (
@@ -18,7 +20,6 @@ CREATE TABLE IF NOT EXISTS Users (
     status VARCHAR(32),
     birthday DATE,
     token VARCHAR(72) DEFAULT ''
-
 );
 
 -- table for Friend-pairs based on username
@@ -52,6 +53,21 @@ CREATE TABLE IF NOT EXISTS ChatAssociations (
     FOREIGN KEY (roomId) REFERENCES Rooms(code),
     FOREIGN KEY (username) REFERENCES Users(username)
 );
+
+CREATE TABLE IF NOT EXISTS Servers (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(40) NOT NULL,
+    code VARCHAR(4) NOT NULL UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS ServersToUsers (
+    id SERIAL PRIMARY KEY,
+    code VARCHAR(4) NOT NULL,
+    username VARCHAR(16) NOT NULL,
+    FOREIGN KEY (code) REFERENCES Servers(code),
+    FOREIGN KEY (username) REFERENCES Users(username)
+);
+
 
 CREATE TABLE IF NOT EXISTS Messages (
     id SERIAL PRIMARY KEY,

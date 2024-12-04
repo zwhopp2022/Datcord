@@ -1,7 +1,9 @@
 let currentUser = getCookie("username");
 let token = getCookie("token");
+console.log(token);
 let newChatContainer = document.getElementById("new-chat");
 let chatSection = document.getElementById("chats");
+let serverSection = document.getElementById("server-list");
 
 function getCookie(name) {
     const cookies = document.cookie.split("; ");
@@ -21,6 +23,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (currentUser) {
         document.getElementById("left-panel-header").textContent = `${currentUser.username}'s Chats`;
         renderChatsInPanel();
+        renderServersInPanel();
     } else {
         console.log("No user is logged in");
     }
@@ -51,6 +54,31 @@ function createAndInsertChat(username, code) {
     
     chatSection.appendChild(newChatBox);
 }
+
+function createAndInsertServer(serverName, code) {
+    let newServerBox = document.createElement("div");
+    newServerBox.id = code;
+    newServerBox.dataset.serverName = serverName;
+    newServerBox.classList.add("server-box");
+    
+    let removeButton = document.createElement("button");
+    removeButton.textContent = "X";
+    removeButton.id = "remove-button";
+    removeButton.classList.add("remove-button");
+    removeButton.addEventListener("click", removeServer);
+
+    let serverNameButton = document.createElement("button");
+    serverNameButton.textContent = serverName;
+    serverNameButton.id = "username-button";
+    serverNameButton.classList.add("username-button");
+    serverNameButton.addEventListener("click", renderServerInMainContent);
+
+    newServerBox.appendChild(removeButton);
+    newServerBox.appendChild(serverNameButton);
+    
+    serverSection.appendChild(newServerBox);
+}
+
 
 
 
@@ -85,6 +113,25 @@ function renderChatsInPanel() {
     })
     .catch(error => console.log("Error fetching chats:", error));
 }
+
+function renderServersInPanel() {
+    serverSection.innerHTML = '';
+    fetch(`http://localhost:3000/get-servers?username=${currentUser}`, {
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            "Content-Type": "application/json"
+        },
+        credentials: 'include',
+    })
+    .then(response => response.json())
+    .then(body => {
+        body.result.forEach(row => {
+            createAndInsertServer(row["name"], row["code"]);
+        });
+    })
+    .catch(error => console.log("Error fetching Servers:", error));
+}
+
 
 
 function promptNewDirectMessageChat() {
@@ -131,6 +178,56 @@ function promptNewDirectMessageChat() {
     });
 
     newChatContainer.appendChild(usernameInput);
+    newChatContainer.appendChild(cancelButton);
+    newChatContainer.appendChild(createButton);
+    newChatContainer.appendChild(messageContainer);
+}
+
+function promptNewServer() {
+    while (newChatContainer.firstChild) {
+        newChatContainer.removeChild(newChatContainer.firstChild);
+    }
+
+    let messageContainer = document.createElement("div");
+    let nameInput = document.createElement("input");
+    let cancelButton = document.createElement("button");
+    let createButton = document.createElement("button");
+
+    cancelButton.classList.add("chat-btn");
+    createButton.classList.add("chat-btn");
+
+    cancelButton.id = "cancel-button";
+    createButton.id = "create-button";
+    nameInput.id = "name-input";
+    messageContainer.id = "message-container";
+
+    // Adding placeholder text
+    nameInput.style.width = "100%";
+    nameInput.style.padding = "10px";
+    nameInput.style.borderRadius = "15px";
+    nameInput.style.marginBottom = "10px"; 
+    nameInput.style.border = "1px solid #ccc";
+    nameInput.placeholder = "Enter the server name here";  // Placeholder text
+
+    cancelButton.style.marginRight = "2px";
+    cancelButton.style.width = "48%";
+    cancelButton.textContent = "Cancel";
+    createButton.style.marginLeft = "2px"; 
+    createButton.style.width = "48%";
+    createButton.textContent = "Create";
+
+    cancelButton.addEventListener("click", cancelNewChat);
+    createButton.addEventListener("click", () => {
+        let newServerName = nameInput.value.trim();
+        console.log(newServerName);
+        if (newServerName != "") {
+            makeNewServer(newServerName, currentUser);
+        } else {
+            showMessage("Please enter a valid server name.", "error");
+        }
+    });
+
+    newChatContainer.appendChild(nameInput);
     newChatContainer.appendChild(cancelButton);
     newChatContainer.appendChild(createButton);
     newChatContainer.appendChild(messageContainer);
@@ -192,6 +289,8 @@ function promptNewGroupChat() {
         userInputsContainer.appendChild(newInput);
     });
 
+    
+
     createButton.addEventListener("click", () => {
         let usernames = Array.from(userInputsContainer.getElementsByClassName("username-input"))
             .map(input => input.value.trim())
@@ -218,6 +317,73 @@ function promptNewGroupChat() {
     newChatContainer.appendChild(messageContainer);
 }
 
+function promptJoinServer() {
+    while (newChatContainer.firstChild) {
+        newChatContainer.removeChild(newChatContainer.firstChild);
+    }
+
+    let messageContainer = document.createElement("div");
+    let codeInput = document.createElement("input");
+    let cancelButton = document.createElement("button");
+    let joinButton = document.createElement("button");
+
+    cancelButton.classList.add("chat-btn");
+    joinButton.classList.add("chat-btn");
+
+    cancelButton.id = "cancel-button";
+    joinButton.id = "create-button";
+    codeInput.id = "code-input";
+    messageContainer.id = "message-container";
+
+    // Adding placeholder text
+    codeInput.style.width = "100%";
+    codeInput.style.padding = "10px";
+    codeInput.style.borderRadius = "15px";
+    codeInput.style.marginBottom = "10px"; 
+    codeInput.style.border = "1px solid #ccc";
+    codeInput.placeholder = "Enter the server code here";  // Placeholder text
+
+    cancelButton.style.marginRight = "2px";
+    cancelButton.style.width = "48%";
+    cancelButton.textContent = "Cancel";
+    joinButton.style.marginLeft = "2px"; 
+    joinButton.style.width = "48%";
+    joinButton.textContent = "Join";
+
+    cancelButton.addEventListener("click", cancelNewChat);
+
+    joinButton.addEventListener("click", () => {
+        let serverCode = codeInput.value;
+        fetch("http://localhost:3000/join-server", {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                "Content-Type": "application/json",
+            },
+            method: "POST",
+            credentials: 'include',  // Ensures cookies are sent with the request
+            body: JSON.stringify({
+                "username": currentUser,
+                "serverCode": serverCode
+            })
+            }).then(response => response.json())
+            .then(body => {
+                if (body.result) {
+                    showMessage(`Joined server ${serverCode}`, "success");
+                    renderServersInPanel();
+                } else {
+                    showMessage(`Failed to join server`, "error");
+                }
+            }).catch(error => {
+                showMessage(error.message, "error");
+            });
+        });
+
+    newChatContainer.appendChild(codeInput);
+    newChatContainer.appendChild(cancelButton);
+    newChatContainer.appendChild(joinButton);
+    newChatContainer.appendChild(messageContainer);
+}
+
 function clearDivAndMakeNewChatButtons() {
     while (newChatContainer.firstChild) {
         newChatContainer.removeChild(newChatContainer.firstChild);
@@ -233,12 +399,27 @@ function clearDivAndMakeNewChatButtons() {
     newGroupChatButton.classList.add("chat-btn");
     newGroupChatButton.textContent = "New Group Chat";
 
+    let newServerButton = document.createElement("button");
+    newServerButton.id = "server-button";
+    newServerButton.classList.add("chat-btn");
+    newServerButton.textContent = "New Server";
+    
+    let joinServerButton = document.createElement("button");
+    joinServerButton.id = "server-button";
+    joinServerButton.classList.add("chat-btn");
+    joinServerButton.textContent = "Join Server";
+
     newDirectMessageButton.addEventListener("click", promptNewDirectMessageChat);
     newGroupChatButton.addEventListener("click", promptNewGroupChat);
+    newServerButton.addEventListener("click", promptNewServer);
+    joinServerButton.addEventListener("click", promptJoinServer);
+
     let messageContainer = document.createElement("div");
     messageContainer.id = "message-container";
     newChatContainer.appendChild(newDirectMessageButton);
     newChatContainer.appendChild(newGroupChatButton);
+    newChatContainer.appendChild(newServerButton);
+    newChatContainer.appendChild(joinServerButton)
     newChatContainer.appendChild(messageContainer);
 }
 
@@ -255,6 +436,36 @@ function showMessage(message, type) {
     setTimeout(() => {
         messageContainer.style.display = "none";
     }, 5000);
+}
+
+function makeNewServer(serverName, createdBy) {
+    if (!(serverName.length > 0) || !(createdBy.length > 0)) {
+        showMessage("Invalid data for creating a server.", "error");
+        return;
+    }
+
+    fetch ("http://localhost:3000/create-server", {
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            "Content-Type": "application/json",
+        },
+        method: "POST",
+        body: JSON.stringify({
+            "serverName": serverName,
+            "createdBy": createdBy
+        })
+    }).then(response => response.json())
+    .then(body => {
+        console.log(body["serverCode"]);
+        if (body.hasOwnProperty("serverCode")) {
+            showMessage(`Created new Server: ${serverName}`, "success");
+            renderServersInPanel();
+        } else {
+            showMessage(`Failed to create new server`, "error");
+        }
+    }).catch(error => {
+        showMessage(error.message, "error");
+    });
 }
 
 function makeNewChat(type, title, usernames) {
@@ -357,6 +568,33 @@ function removeChat(event) {
     }).catch(error => showMessage(error.message, "error"));
 }
 
+function removeServer(event) {
+    let parentDiv = event.target.closest(".server-box");
+
+    let serverCode = parentDiv.id;
+    
+    fetch("http://localhost:3000/leave-server", {
+        method: "POST",
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            "Content-Type": "application/json"
+        },
+        credentials: 'include',
+        body: JSON.stringify({ "serverCode":  serverCode, "user": currentUser}) 
+    })
+    .then(response => response.json())
+    .then(body => {
+        if (body.result) {
+            showMessage(`Left server with code ${serverCode}`, "success");
+            parentDiv.remove();
+            const iframe = document.getElementById("current-chat");
+            iframe.src = "";
+        } else {
+            showMessage(body.message, "error");
+        }
+    }).catch(error => showMessage(error.message, "error"));
+}
+
 function renderChatInMainContent(event) {
     let usernameButton = event.target;
     let parentDiv = usernameButton.closest("div");
@@ -381,6 +619,34 @@ function renderChatInMainContent(event) {
 
     iframe.onerror = (error) => {
         showMessage("Failed to load chat room", "error");
+    };
+}
+
+function renderServerInMainContent(event) {
+    let serverButton = event.target;
+    let parentDiv = serverButton.closest("div");
+    
+    // Make sure you're accessing the id correctly.
+    let serverCode = parentDiv ? parentDiv.id : null;
+    let serverName = parentDiv ? parentDiv.dataset.serverName : null;
+
+    console.log(serverCode);
+
+    if (!serverCode) {
+        showMessage("Server Code not found", "error");
+        return;
+    }
+
+    const iframe = document.getElementById("current-chat");
+
+    iframe.src = `http://localhost:3000/home/server?serverCode=${serverCode}&serverName=${serverName}`;
+
+    iframe.onload = () => {
+        console.log(`Loaded Server with code: ${serverCode}`);
+    };
+
+    iframe.onerror = (error) => {
+        showMessage("Failed to load Server", "error");
     };
 }
 
