@@ -42,8 +42,9 @@ let authorize = async (req, res, next) => {
     if (noVerificationPaths.includes(req.path)) {
         return next();
     }
-    let { token } = req.cookies;
-    if (token === undefined || await searchToken(token)) {
+    let { token, username } = req.cookies;
+    console.log(token);
+    if (token === undefined || !(await searchToken(token))) {
         console.log("not allowed");
         return res.status(403).send("Not allowed");
     }
@@ -77,9 +78,20 @@ function saveToken(username, hashedToken) {
 async function searchToken(token) {
     try {
         let result = await pool.query(`SELECT U.token FROM Users U WHERE U.token = $1`, [token]);
+        console.log(result.rows.length > 0);
         return result.rows.length > 0;
     } catch (error) {
         console.log(`Error searching token: ${error}`);
+        return false;
+    }
+}
+
+async function searchServers(code) {
+    try {
+        let result = await pool.query(`SELECT S.code FROM Servers S WHERE S.code = $1`, [code]);
+        return result.rows.length > 0;
+    } catch (error) {
+        console.log(`Error searching for Server code: ${error}`);
         return false;
     }
 }
@@ -887,6 +899,36 @@ app.post("/remove-chat", async (req, res) => {
     }
 });
 
+app.post("/remove-chat", async (req, res) => {
+    let body = req.body;
+    let serverCode = body.serverCode;
+
+    if (!serverCode || serverCode.length !== 4) {
+        return res.status(400).json({ message: "Misformatted or missing server code information" });
+    }
+
+    try {
+        await pool.query('BEGIN');
+
+        await pool.query(
+            `DELETE FROM ServersToUsers WHERE code = $1`,
+            [serverCode]
+        );
+
+        await pool.query(
+            `DELETE FROM Servers WHERE code = $1`,
+            [serverCode]
+        );
+
+        await pool.query('COMMIT');
+        return res.status(200).json({ result: true });
+    } catch (error) {
+        console.error("Error removing server:", error);
+        await pool.query('ROLLBACK');
+        return res.status(400).json({ message: "Error removing server from database" });
+    }
+});
+
 
 // returns all chat objects from database to client
 app.get("/get-chats", (req, res) => {
@@ -912,6 +954,29 @@ app.get("/get-chats", (req, res) => {
         });
 });
 
+app.get("/get-servers", (req, res) => {
+    let username = req.query.username;
+
+    if (!username || username.length < 1 || username.length > 16) {
+        return res.status(400).json({ message: "Misformatted or missing username information" });
+    }
+
+    pool.query(
+        `SELECT s.*
+         FROM Servers s
+         INNER JOIN ServersToUsers stu ON s.code = stu.code
+         WHERE stu.user = $1`,
+        [username]
+    )
+        .then((result) => {
+            return res.status(200).json({ result: result.rows });
+        })
+        .catch((error) => {
+            console.error("Error fetching Servers:", error);
+            return res.status(400).json({ message: "Error finding Servers in database" });
+        });
+});
+
 
 // renders existing chat room from server to client
 app.get("/home/chat", (req, res) => {
@@ -922,6 +987,17 @@ app.get("/home/chat", (req, res) => {
     }
     console.log("Sending room", roomId);
     res.sendFile(path.resolve(__dirname, 'public', 'chat', 'chat.html'));
+});
+
+// renders existing server from server to client
+app.get("/home/server", (req, res) => {
+    let serverCode = req.query.serverCode;
+    console.log(serverCode);
+    if (!searchServers(serverCode)) {
+        return res.status(404).send();
+    }
+    console.log("Sending Server", serverCode);
+    res.sendFile(path.resolve(__dirname, 'public', 'server', 'server.html'));
 });
 
 // saves new message in a chat
@@ -947,6 +1023,34 @@ app.post("/save-message", (req, res) => {
     }
 });
 
+
+app.post("/create-server", async (req, res) => {
+    let body = req.body;
+
+    if (validateCreateServerRequest(body)) {
+        let { serverName, createdBy } = body;
+        let serverCode = await generateRoomCode();
+
+        try {
+            await pool.query(
+                "INSERT INTO Servers (name, code) VALUES ($1, $2)",
+                [serverName, serverCode]
+            );
+            
+            await pool.query(
+                `INSERT INTO ServersToUsers (code, username)
+                VALUES ($1, $2)`,
+                [serverCode, createdBy]
+            );
+            res.status(200).json({ serverCode });
+        } catch(error) {
+            res.status(500).json({ "message": "Internal server error" });
+        }
+    } else {
+        res.status(404).json({ error: "Invalid request to create server" });
+    }
+
+});
 
 // returns all messages in a given, existing chat
 app.get("/get-messages", async (req, res) => {
