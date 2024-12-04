@@ -68,6 +68,14 @@ CREATE TABLE IF NOT EXISTS ServersToUsers (
     FOREIGN KEY (username) REFERENCES Users(username)
 );
 
+CREATE TABLE IF NOT EXISTS UserPermissionsInServer (
+    id SERIAL PRIMARY KEY,
+    code VARCHAR(4) NOT NULL,
+    username VARCHAR(16) NOT NULL,
+    permission int DEFAULT 1,
+    FOREIGN KEY (code) REFERENCES Servers(code),
+    FOREIGN KEY (username) REFERENCES Users(username) 
+);
 
 CREATE TABLE IF NOT EXISTS Messages (
     id SERIAL PRIMARY KEY,

@@ -81,6 +81,12 @@ app.get("/home/chat", (req, res) => {
   res.sendFile(path.resolve(__dirname, 'public', 'chat', 'chat.html'));
 });
 
+app.get("/permissions", (req, res) => {
+  let serverCode = req.query.serverCode;
+  console.log("Loading permissions for", serverCode);
+  res.sendFile(path.resolve(__dirname, 'public', 'permissions', 'permissions.html'));
+});
+
 let rooms = {};
 
 io.on("connection", (socket) => {

@@ -354,29 +354,60 @@ function promptJoinServer() {
 
     joinButton.addEventListener("click", () => {
         let serverCode = codeInput.value;
-        fetch("http://localhost:3000/join-server", {
+
+        let isAlreadyMember = false;
+
+        fetch(`http://localhost:3000/get-servers?username=${currentUser}`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
-                "Content-Type": "application/json",
+                "Content-Type": "application/json"
             },
-            method: "POST",
-            credentials: 'include',  // Ensures cookies are sent with the request
-            body: JSON.stringify({
-                "username": currentUser,
-                "serverCode": serverCode
-            })
-            }).then(response => response.json())
-            .then(body => {
-                if (body.result) {
-                    showMessage(`Joined server ${serverCode}`, "success");
-                    renderServersInPanel();
-                } else {
-                    showMessage(`Failed to join server`, "error");
+            credentials: 'include',
+        }).then(response => {
+            if (response.ok && response.headers.get("Content-Type")?.includes("application/json")) {
+                return response.json();
+            } else {
+                return response.text();
+            }
+        }).then(body => {
+            for (let server of body["result"]) {
+                if (server["code"] === serverCode) {
+                    isAlreadyMember = true;
                 }
-            }).catch(error => {
-                showMessage(error.message, "error");
-            });
+            }
+
+            if (!isAlreadyMember) {
+                fetch("http://localhost:3000/join-server", {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        "Content-Type": "application/json",
+                    },
+                    method: "POST",
+                    credentials: 'include',  // Ensures cookies are sent with the request
+                    body: JSON.stringify({
+                        "username": currentUser,
+                        "serverCode": serverCode
+                    })
+                    }).then(response => response.json())
+                    .then(body => {
+                        if (body.result) {
+                            showMessage(`Joined server ${serverCode}`, "success");
+                            renderServersInPanel();
+                        } else {
+                            showMessage(`Failed to join server`, "error");
+                        }
+                    }).catch(error => {
+                        showMessage(error.message, "error");
+                    });
+            } else {
+                showMessage("Already a member", "error");
+            }
+        }).catch(error => {
+            console.log(error);
+            showMessage(error.message, "error", searchMessageDiv);
         });
+
+    });
 
     newChatContainer.appendChild(codeInput);
     newChatContainer.appendChild(cancelButton);
@@ -570,29 +601,72 @@ function removeChat(event) {
 
 function removeServer(event) {
     let parentDiv = event.target.closest(".server-box");
-
     let serverCode = parentDiv.id;
-    
-    fetch("http://localhost:3000/leave-server", {
-        method: "POST",
+
+    let permissionLevel = null;
+
+    fetch(`http://localhost:3000/get-permission?username=${currentUser}&serverCode=${serverCode}`, {
         headers: {
             'Authorization': `Bearer ${token}`,
             "Content-Type": "application/json"
         },
         credentials: 'include',
-        body: JSON.stringify({ "serverCode":  serverCode, "user": currentUser}) 
-    })
-    .then(response => response.json())
-    .then(body => {
-        if (body.result) {
-            showMessage(`Left server with code ${serverCode}`, "success");
-            parentDiv.remove();
-            const iframe = document.getElementById("current-chat");
-            iframe.src = "";
+    }).then(response => {
+        if (response.ok && response.headers.get("Content-Type")?.includes("application/json")) {
+            return response.json();
         } else {
-            showMessage(body.message, "error");
+            return response.text();
         }
-    }).catch(error => showMessage(error.message, "error"));
+    }).then(body => {
+        permissionLevel = body["permission"];
+        if (permissionLevel === 5) {
+            fetch("http://localhost:3000/remove-server", {
+                method: "POST",
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                credentials: 'include',
+                body: JSON.stringify({ "serverCode":  serverCode}) 
+            })
+            .then(response => response.json())
+            .then(body => {
+                if (body.result) {
+                    showMessage(`Removed server with code ${serverCode}`, "success");
+                    parentDiv.remove();
+                    const iframe = document.getElementById("current-chat");
+                    iframe.src = "";
+                } else {
+                    showMessage(body.message, "error");
+                }
+            }).catch(error => showMessage(error.message, "error"));
+        } else {
+            fetch("http://localhost:3000/leave-server", {
+                method: "POST",
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                credentials: 'include',
+                body: JSON.stringify({ "serverCode":  serverCode, "user": currentUser}) 
+            })
+            .then(response => response.json())
+            .then(body => {
+                if (body.result) {
+                    showMessage(`Left server with code ${serverCode}`, "success");
+                    parentDiv.remove();
+                    const iframe = document.getElementById("current-chat");
+                    iframe.src = "";
+                } else {
+                    showMessage(body.message, "error");
+                }
+            }).catch(error => showMessage(error.message, "error"));
+        }
+    }).catch(error => {
+        console.log(error);
+        showMessage(error.message, "error", searchMessageDiv);
+    });
+
 }
 
 function renderChatInMainContent(event) {

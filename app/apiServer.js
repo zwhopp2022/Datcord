@@ -952,6 +952,13 @@ app.post("/join-server", async (req, res) => {
             [serverCode, username]
         );
 
+        await pool.query(
+            `INSERT INTO UserPermissionsInServer (code, username, permission)
+            VALUES ($1, $2, $3)`,
+            [serverCode, username, 1]
+        );
+
+        await pool.query('COMMIT');
         return res.status(200).json({ result: true });
     } catch (error) {
         console.error("Error joining server:", error);
@@ -973,6 +980,11 @@ app.post("/remove-server", async (req, res) => {
 
         await pool.query(
             `DELETE FROM ServersToUsers WHERE code = $1`,
+            [serverCode]
+        );
+
+        await pool.query(
+            `DELETE FROM UserPermissionsInServer WHERE code = $1`,
             [serverCode]
         );
 
@@ -1004,6 +1016,11 @@ app.post("/leave-server", async (req, res) => {
 
         await pool.query(
             `DELETE FROM ServersToUsers WHERE code = $1 AND username = $2`,
+            [serverCode, username]
+        );
+
+        await pool.query(
+            `DELETE FROM UserPermissionsInServer WHERE code = $1 AND username = $2`,
             [serverCode, username]
         );
 
@@ -1128,6 +1145,12 @@ app.post("/create-server", async (req, res) => {
                 VALUES ($1, $2)`,
                 [serverCode, createdBy]
             );
+
+            await pool.query(
+                `INSERT INTO UserPermissionsInServer (code, username, permission)
+                VALUES ($1, $2, $3)`,
+                [serverCode, createdBy, 5]
+            );
             res.status(200).json({ "serverCode": serverCode });
         } catch(error) {
             res.status(500).json({ "message": "Internal server error" });
@@ -1176,27 +1199,127 @@ app.put("/edit-message", async (req, res) => {
     });
 });
 
-// Socket.io connection handling
-io.on('connection', (socket) => {
-    const roomId = socket.handshake.query.roomId;
-    console.log(`Client connected to room ${roomId}`);
 
-    if (roomId) {
-        socket.join(roomId);
-        console.log(`Socket ${socket.id} joined room ${roomId}`);
-    }
+// ALL HANDLERS AND HELPER FUNCTIONS FOR SERVER PERMISSIONS BELOW
 
-    socket.on('disconnect', () => {
-        if (roomId) {
-            socket.leave(roomId);
-            console.log(`Socket ${socket.id} left room ${roomId}`);
+function validateModifyPermissionsBody(body) {
+    if (
+        body.hasOwnProperty("username") &&
+        body.hasOwnProperty("permission") &&
+        body.hasOwnProperty("code")
+    ) {
+        if (
+            (body["username"].length >= 1 && body["username"].length <= 16) && 
+            (body["permission"] >= 1 && body["permission"] <= 5) &&
+            (body["code"].length === 4)
+        ) {
+            return true;
+        } else {
+            return false;
         }
-    });
+    } else {
+        return false;
+    }
+}
 
-    socket.on("messageBroadcast", async (data) => {
-        const { message, username, messageId } = data;
-        socket.to(roomId).emit("messageBroadcast", { message, username, messageId });
-    });
+function validateGetPermissionsBody(body) {
+    if (
+        body.hasOwnProperty("username") &&
+        body.hasOwnProperty("serverCode")
+    ) {
+        if (
+            (body["username"].length >= 1 && body["username"].length <= 16) &&
+            (body["serverCode"].length === 4)
+        ) {
+            return true;
+        } else {
+            return false;
+        }
+    } else {
+        return false;
+    }
+}
+
+async function usernameInServer(username, serverCode) {
+    try {
+        const result = await pool.query(
+            `SELECT s.*
+            FROM Servers s
+            INNER JOIN ServersToUsers stu ON s.code = stu.code
+            WHERE stu.username = $1`,
+            [username]
+        );
+        for (let row of result.rows) {
+            if (row.code === serverCode) {
+                return true; 
+            }
+        }
+        return false;
+    } catch (error) {
+        console.error("Error fetching Servers:", error);
+        return false; 
+    }
+}
+
+// changes the permission level of an existing user in a server
+app.post("/modify-permission", async (req, res) => {
+    let body = req.body;
+
+    if (validateModifyPermissionsBody(body)) {
+        let username = body["username"];
+        let permission = body["permission"];
+        let code = body["code"];
+        if (await searchUserHelper(username)) {
+            if (await usernameInServer(username, code)) {
+                await pool.query(
+                    `UPDATE UserPermissionsInServer 
+                    SET permission = $1 
+                    WHERE username = $2 AND code = $3`,
+                    [permission, username, code]
+                ).then((result) => {
+                    return res.status(200).json({ "message": "Permission updated successfully" });
+                }).catch((error) => {
+                    return res.status(400).json({ "message": "Error updating user permission" });
+                }); 
+            } else {
+                return res.status(400).json({ "message": "Username not found in server" });
+            }
+        } else {
+            return res.status(400).json({ "message": "Username not found in registry" });
+        }
+    } else {
+        return res.status(400).json({ "message": "Missing or misformatted permission modification information" });
+    }
+});
+
+// gets the permission level of a user in a server
+app.get("/get-permission", async (req, res) => {
+    let { username, serverCode } = req.query;
+    let body = {
+        "username": username,
+        "serverCode": serverCode
+    };
+
+    if (validateGetPermissionsBody(body)) {
+        try {
+            let result = await pool.query(
+                `SELECT permission 
+                 FROM UserPermissionsInServer 
+                 WHERE username = $1 AND code = $2`,
+                [username, serverCode]
+            );
+    
+            if (result.rows.length > 0) {
+                return res.status(200).json({ "permission": result.rows[0].permission });
+            } else {
+                return res.status(404).json({ "message": "Permission not found" });
+            }
+        } catch (err) {
+            return res.status(500).json({ "message": "Internal server error" });
+        }
+    } else {
+        return res.status(400).json({ "message": "Missing or misformatted permission fetching information" });
+    }
 });
 
 // API endpoint to handle message reactions
@@ -1363,6 +1486,30 @@ app.post("/get-reaction-counts", async (req, res) => {
         });
     }
 });
+
+// Socket.io connection handling
+io.on('connection', (socket) => {
+    const roomId = socket.handshake.query.roomId;
+    console.log(`Client connected to room ${roomId}`);
+
+    if (roomId) {
+        socket.join(roomId);
+        console.log(`Socket ${socket.id} joined room ${roomId}`);
+    }
+
+    socket.on('disconnect', () => {
+        if (roomId) {
+            socket.leave(roomId);
+            console.log(`Socket ${socket.id} left room ${roomId}`);
+        }
+    });
+
+    socket.on("messageBroadcast", async (data) => {
+        const { message, username, messageId } = data;
+        socket.to(roomId).emit("messageBroadcast", { message, username, messageId });
+    });
+});
+
 
 //  server startup
 server.listen(port, hostname, () => {
