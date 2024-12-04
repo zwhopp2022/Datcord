@@ -23,6 +23,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (currentUser) {
         document.getElementById("left-panel-header").textContent = `${currentUser.username}'s Chats`;
         renderChatsInPanel();
+        renderServersInPanel();
     } else {
         console.log("No user is logged in");
     }
@@ -57,6 +58,7 @@ function createAndInsertChat(username, code) {
 function createAndInsertServer(serverName, code) {
     let newServerBox = document.createElement("div");
     newServerBox.id = code;
+    newServerBox.dataset.serverName = serverName;
     newServerBox.classList.add("server-box");
     
     let removeButton = document.createElement("button");
@@ -434,8 +436,10 @@ function makeNewServer(serverName, createdBy) {
             "serverName": serverName,
             "createdBy": createdBy
         })
-    }).then(body => {
-        if (body.result) {
+    }).then(response => response.json())
+    .then(body => {
+        console.log(body["serverCode"]);
+        if (body.hasOwnProperty("serverCode")) {
             showMessage(`Created new Server: ${serverName}`, "success");
             renderServersInPanel();
         } else {
@@ -551,19 +555,19 @@ function removeServer(event) {
 
     let serverCode = parentDiv.id;
     
-    fetch("http://localhost:3000/remove-server", {
+    fetch("http://localhost:3000/leave-server", {
         method: "POST",
         headers: {
             'Authorization': `Bearer ${token}`,
             "Content-Type": "application/json"
         },
         credentials: 'include',
-        body: JSON.stringify({ "serverCode":  serverCode}) 
+        body: JSON.stringify({ "serverCode":  serverCode, "user": currentUser}) 
     })
     .then(response => response.json())
     .then(body => {
         if (body.result) {
-            showMessage(`Removed server with code ${serverCode}`, "success");
+            showMessage(`Left server with code ${serverCode}`, "success");
             parentDiv.remove();
             const iframe = document.getElementById("current-chat");
             iframe.src = "";
@@ -606,6 +610,7 @@ function renderServerInMainContent(event) {
     
     // Make sure you're accessing the id correctly.
     let serverCode = parentDiv ? parentDiv.id : null;
+    let serverName = parentDiv ? parentDiv.dataset.serverName : null;
 
     console.log(serverCode);
 
@@ -616,7 +621,7 @@ function renderServerInMainContent(event) {
 
     const iframe = document.getElementById("current-chat");
 
-    iframe.src = `http://localhost:3000/home/server?serverCode=${serverCode}`;
+    iframe.src = `http://localhost:3000/home/server?serverCode=${serverCode}&serverName=${serverName}`;
 
     iframe.onload = () => {
         console.log(`Loaded Server with code: ${serverCode}`);

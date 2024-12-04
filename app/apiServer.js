@@ -38,13 +38,14 @@ app.use(cors({
 }));
 
 let authorize = async (req, res, next) => {
-    let noVerificationPaths = ["/", "/add-user", "/login", "/register", "/add-friend"];
+    let noVerificationPaths = ["/", "/add-user", "/login", "/register", "/add-friend", "/create-server"];
     if (noVerificationPaths.includes(req.path)) {
         return next();
     }
     let { token, username } = req.cookies;
-    console.log(token);
-    if (token === undefined || !(await searchToken(token))) {
+    let storedToken = await getToken(username);
+    let verified = await bcrypt.compare(token, storedToken);
+    if (token === undefined || !(verified)) {
         console.log("not allowed");
         return res.status(403).send("Not allowed");
     }
@@ -74,11 +75,22 @@ function saveToken(username, hashedToken) {
     });
 }
 
+async function getToken(username) {
+    try {
+        let result = await pool.query(`SELECT U.token FROM Users U WHERE U.username = $1`, [username]);
+        let token = result.rows[0].token;
+        return token;
+    } catch (error) {
+        console.log(`Error retrieving token: ${error}`);
+        return "";
+    }
+}
+
 // returns true if a users token is existing in the database
 async function searchToken(token) {
     try {
         let result = await pool.query(`SELECT U.token FROM Users U WHERE U.token = $1`, [token]);
-        console.log(result.rows.length > 0);
+        let result2 = await pool.query(`SELECT U.token FROM Users U WHERE U.token IS NOT NULL`);
         return result.rows.length > 0;
     } catch (error) {
         console.log(`Error searching token: ${error}`);
@@ -197,6 +209,19 @@ function checkFriendAttributes(body) {
         body.hasOwnProperty("usernameTwo")
     ) {
         return true;
+    } else {
+        return false;
+    }
+}
+
+function validateCreateServerRequest(body) {
+    if (
+        body.hasOwnProperty("serverName") &&
+        body.hasOwnProperty("createdBy")
+    ) {
+        if (body["serverName"].length > 0 && body["serverName"].length <= 40) {
+            return true;
+        }
     } else {
         return false;
     }
@@ -899,7 +924,7 @@ app.post("/remove-chat", async (req, res) => {
     }
 });
 
-app.post("/remove-chat", async (req, res) => {
+app.post("/remove-server", async (req, res) => {
     let body = req.body;
     let serverCode = body.serverCode;
 
@@ -926,6 +951,32 @@ app.post("/remove-chat", async (req, res) => {
         console.error("Error removing server:", error);
         await pool.query('ROLLBACK');
         return res.status(400).json({ message: "Error removing server from database" });
+    }
+});
+
+app.post("/leave-server", async (req, res) => {
+    let body = req.body;
+    let serverCode = body.serverCode;
+    let username = body.user;
+
+    if (!serverCode || serverCode.length !== 4) {
+        return res.status(400).json({ message: "Misformatted or missing server code information" });
+    }
+
+    try {
+        await pool.query('BEGIN');
+
+        await pool.query(
+            `DELETE FROM ServersToUsers WHERE code = $1 AND username = $2`,
+            [serverCode, username]
+        );
+
+        await pool.query('COMMIT');
+        return res.status(200).json({ result: true });
+    } catch (error) {
+        console.error("Error removing User from server:", error);
+        await pool.query('ROLLBACK');
+        return res.status(400).json({ message: "Error removing user from database" });
     }
 });
 
@@ -965,7 +1016,7 @@ app.get("/get-servers", (req, res) => {
         `SELECT s.*
          FROM Servers s
          INNER JOIN ServersToUsers stu ON s.code = stu.code
-         WHERE stu.user = $1`,
+         WHERE stu.username = $1`,
         [username]
     )
         .then((result) => {
@@ -1030,7 +1081,6 @@ app.post("/create-server", async (req, res) => {
     if (validateCreateServerRequest(body)) {
         let { serverName, createdBy } = body;
         let serverCode = await generateRoomCode();
-
         try {
             await pool.query(
                 "INSERT INTO Servers (name, code) VALUES ($1, $2)",
@@ -1042,7 +1092,7 @@ app.post("/create-server", async (req, res) => {
                 VALUES ($1, $2)`,
                 [serverCode, createdBy]
             );
-            res.status(200).json({ serverCode });
+            res.status(200).json({ "serverCode": serverCode });
         } catch(error) {
             res.status(500).json({ "message": "Internal server error" });
         }

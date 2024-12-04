@@ -260,3 +260,7 @@ body {
 .username-button:hover {
     background-color: #555;
 }
+
+#current-chat {
+    padding: 5px;
+}
