@@ -22,7 +22,7 @@ if (process.env.NODE_ENV == "production") {
 	host = "localhost";
 }
 
-const env = require("../appsettings.json");
+//const env = require("../appsettings.json");
 const Pool = pg.Pool;
 const pool = new Pool(databaseConfig);
 pool.connect().then(function () {
