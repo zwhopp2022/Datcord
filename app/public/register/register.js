@@ -24,7 +24,7 @@ form.addEventListener("submit", (event) => {
         showMessage("Passwords do not match!", "error");
     } else {
         messageContainer.textContent = "";
-        fetch('http://localhost:3000/add-user', {
+        fetch('https://datcord.fly.dev/add-user', {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
