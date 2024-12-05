@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Permissions</title>
+    <link rel="stylesheet" href="permissions.css">
+</head>
+<body>
+    <button id="back-btn" class="circular-btn"><</button>
+    
+    <div class="banner">
+        <div id="banner-username" class="banner-item">User: </div>
+        <div id="banner-permission" class="banner-item">Permission Level: </div>
+    </div>
+    <div class="permissions-container-wrapper">
+        <div class="permissions-container">
+            <h1>Modify Permissions</h1>
+            <div id="message-container" class="message-container"></div>
+            <div id="server-code-div" class="permissions-field">
+                <label for="serverCode">Server Code</label>
+                <input type="text" id="serverCode" name="serverCode" maxlength="16" disabled>
+            </div>
+            <div id="username-div" class="permissions-field">
+                <label for="username">Username</label>
+                <input type="text" id="modify-username-input" name="username" maxlength="16">
+            </div>
+            <div id="permission-div" class="permissions-field">
+                <label for="permissionsLevel">New Permission Level</label>
+                <input type="text" id="modify-permissionsLevel-input" name="permissionsLevel" maxlength="32">
+            </div>
+            <button id="modify-btn" class="btn">Modify</button>
+            <div id="modify-message-div" class="message-container"></div>
+        </div>
+        <div class="permissions-container">
+            <h1>Search Permissions</h1>
+            <div id="message-container" class="message-container"></div>
+            <div id="search-server-code-div" class="permissions-field">
+                <label for="serverCode">Server Code</label>
+                <input type="text" id="serverCode" name="serverCode" maxlength="16" disabled>
+            </div>
+            <div id="search-username-div" class="permissions-field">
+                <label for="username">Username</label>
+                <input type="text" id="search-username-input" name="username" maxlength="16">
+            </div>
+            <div id="search-permission-div" class="permissions-field">
+                <label for="permissionsLevel">Permissions Level</label>
+                <input type="text" id="permissionsLevel" name="permissionsLevel" maxlength="32" disabled>
+            </div>
+            <button id="search-btn" class="btn" style="margin-top: 50px;">Search</button>
+            <div id="search-message-div" class="message-container"></div>
+        </div>
+    </div>
+    
+    <script src="permissions.js"></script>
+</body>
+</html>

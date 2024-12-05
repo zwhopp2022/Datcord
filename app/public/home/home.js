@@ -30,6 +30,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     clearDivAndMakeNewChatButtons();
 
+    clearDivAndMakeNewServerButtons();
 });
 
 function createAndInsertChat(username, code) {
@@ -354,29 +355,60 @@ function promptJoinServer() {
 
     joinButton.addEventListener("click", () => {
         let serverCode = codeInput.value;
-        fetch("http://localhost:3000/join-server", {
+
+        let isAlreadyMember = false;
+
+        fetch(`http://localhost:3000/get-servers?username=${currentUser}`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
-                "Content-Type": "application/json",
+                "Content-Type": "application/json"
             },
-            method: "POST",
-            credentials: 'include',  // Ensures cookies are sent with the request
-            body: JSON.stringify({
-                "username": currentUser,
-                "serverCode": serverCode
-            })
-            }).then(response => response.json())
-            .then(body => {
-                if (body.result) {
-                    showMessage(`Joined server ${serverCode}`, "success");
-                    renderServersInPanel();
-                } else {
-                    showMessage(`Failed to join server`, "error");
+            credentials: 'include',
+        }).then(response => {
+            if (response.ok && response.headers.get("Content-Type")?.includes("application/json")) {
+                return response.json();
+            } else {
+                return response.text();
+            }
+        }).then(body => {
+            for (let server of body["result"]) {
+                if (server["code"] === serverCode) {
+                    isAlreadyMember = true;
                 }
-            }).catch(error => {
-                showMessage(error.message, "error");
-            });
+            }
+
+            if (!isAlreadyMember) {
+                fetch("http://localhost:3000/join-server", {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        "Content-Type": "application/json",
+                    },
+                    method: "POST",
+                    credentials: 'include',  // Ensures cookies are sent with the request
+                    body: JSON.stringify({
+                        "username": currentUser,
+                        "serverCode": serverCode
+                    })
+                    }).then(response => response.json())
+                    .then(body => {
+                        if (body.result) {
+                            showMessage(`Joined server ${serverCode}`, "success");
+                            renderServersInPanel();
+                        } else {
+                            showMessage(`Failed to join server`, "error");
+                        }
+                    }).catch(error => {
+                        showMessage(error.message, "error");
+                    });
+            } else {
+                showMessage("Already a member", "error");
+            }
+        }).catch(error => {
+            console.log(error);
+            showMessage(error.message, "error", searchMessageDiv);
         });
+
+    });
 
     newChatContainer.appendChild(codeInput);
     newChatContainer.appendChild(cancelButton);
@@ -399,27 +431,13 @@ function clearDivAndMakeNewChatButtons() {
     newGroupChatButton.classList.add("chat-btn");
     newGroupChatButton.textContent = "New Group Chat";
 
-    let newServerButton = document.createElement("button");
-    newServerButton.id = "server-button";
-    newServerButton.classList.add("chat-btn");
-    newServerButton.textContent = "New Server";
-    
-    let joinServerButton = document.createElement("button");
-    joinServerButton.id = "server-button";
-    joinServerButton.classList.add("chat-btn");
-    joinServerButton.textContent = "Join Server";
-
     newDirectMessageButton.addEventListener("click", promptNewDirectMessageChat);
     newGroupChatButton.addEventListener("click", promptNewGroupChat);
-    newServerButton.addEventListener("click", promptNewServer);
-    joinServerButton.addEventListener("click", promptJoinServer);
 
     let messageContainer = document.createElement("div");
     messageContainer.id = "message-container";
     newChatContainer.appendChild(newDirectMessageButton);
     newChatContainer.appendChild(newGroupChatButton);
-    newChatContainer.appendChild(newServerButton);
-    newChatContainer.appendChild(joinServerButton)
     newChatContainer.appendChild(messageContainer);
 }
 
@@ -570,29 +588,72 @@ function removeChat(event) {
 
 function removeServer(event) {
     let parentDiv = event.target.closest(".server-box");
-
     let serverCode = parentDiv.id;
-    
-    fetch("http://localhost:3000/leave-server", {
-        method: "POST",
+
+    let permissionLevel = null;
+
+    fetch(`http://localhost:3000/get-permission?username=${currentUser}&serverCode=${serverCode}`, {
         headers: {
             'Authorization': `Bearer ${token}`,
             "Content-Type": "application/json"
         },
         credentials: 'include',
-        body: JSON.stringify({ "serverCode":  serverCode, "user": currentUser}) 
-    })
-    .then(response => response.json())
-    .then(body => {
-        if (body.result) {
-            showMessage(`Left server with code ${serverCode}`, "success");
-            parentDiv.remove();
-            const iframe = document.getElementById("current-chat");
-            iframe.src = "";
+    }).then(response => {
+        if (response.ok && response.headers.get("Content-Type")?.includes("application/json")) {
+            return response.json();
         } else {
-            showMessage(body.message, "error");
+            return response.text();
         }
-    }).catch(error => showMessage(error.message, "error"));
+    }).then(body => {
+        permissionLevel = body["permission"];
+        if (permissionLevel === 5) {
+            fetch("http://localhost:3000/remove-server", {
+                method: "POST",
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                credentials: 'include',
+                body: JSON.stringify({ "serverCode":  serverCode}) 
+            })
+            .then(response => response.json())
+            .then(body => {
+                if (body.result) {
+                    showMessage(`Removed server with code ${serverCode}`, "success");
+                    parentDiv.remove();
+                    const iframe = document.getElementById("current-chat");
+                    iframe.src = "";
+                } else {
+                    showMessage(body.message, "error");
+                }
+            }).catch(error => showMessage(error.message, "error"));
+        } else {
+            fetch("http://localhost:3000/leave-server", {
+                method: "POST",
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                credentials: 'include',
+                body: JSON.stringify({ "serverCode":  serverCode, "user": currentUser}) 
+            })
+            .then(response => response.json())
+            .then(body => {
+                if (body.result) {
+                    showMessage(`Left server with code ${serverCode}`, "success");
+                    parentDiv.remove();
+                    const iframe = document.getElementById("current-chat");
+                    iframe.src = "";
+                } else {
+                    showMessage(body.message, "error");
+                }
+            }).catch(error => showMessage(error.message, "error"));
+        }
+    }).catch(error => {
+        console.log(error);
+        showMessage(error.message, "error", searchMessageDiv);
+    });
+
 }
 
 function renderChatInMainContent(event) {
@@ -648,6 +709,31 @@ function renderServerInMainContent(event) {
     iframe.onerror = (error) => {
         showMessage("Failed to load Server", "error");
     };
+}
+
+function clearDivAndMakeNewServerButtons() {
+    let newServerContainer = document.getElementById("new-server");
+    while (newServerContainer.firstChild) {
+        newServerContainer.removeChild(newServerContainer.firstChild);
+    }
+
+    let newServerButton = document.createElement("button");
+    newServerButton.id = "server-button";
+    newServerButton.classList.add("chat-btn");
+    newServerButton.textContent = "New Server";
+    newServerButton.style.width = "75%";
+    
+    let joinServerButton = document.createElement("button");
+    joinServerButton.id = "join-server-button";
+    joinServerButton.classList.add("chat-btn");
+    joinServerButton.textContent = "Join Server";
+    joinServerButton.style.width = "75%";
+
+    newServerButton.addEventListener("click", promptNewServer);
+    joinServerButton.addEventListener("click", promptJoinServer);
+
+    newServerContainer.appendChild(newServerButton);
+    newServerContainer.appendChild(joinServerButton);
 }
 
 
