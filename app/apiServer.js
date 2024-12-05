@@ -16,7 +16,7 @@ const app = express();
 const port = process.env.PORT || 3000;
 const hostname = "https://datcord.fly.dev/";
 
-const env = require("../appsettings.local.json");
+const env = require("../appsettings.json");
 const Pool = pg.Pool;
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 let server = http.createServer(app);
