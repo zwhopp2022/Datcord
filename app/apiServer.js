@@ -968,37 +968,51 @@ app.post("/join-server", async (req, res) => {
 });
 
 app.post("/remove-server", async (req, res) => {
-    let body = req.body;
-    let serverCode = body.serverCode;
-
-    if (!serverCode || serverCode.length !== 4) {
-        return res.status(400).json({ message: "Misformatted or missing server code information" });
-    }
-
+    const { serverCode } = req.body;
+    
     try {
         await pool.query('BEGIN');
-
+        
+        // First delete all messages from channels in this server
         await pool.query(
-            `DELETE FROM ServersToUsers WHERE code = $1`,
+            `DELETE FROM Messages 
+             WHERE roomCode IN (
+                SELECT roomId FROM Channels 
+                WHERE serverCode = $1
+             )`,
             [serverCode]
         );
 
+        // Delete all channels
         await pool.query(
-            `DELETE FROM UserPermissionsInServer WHERE code = $1`,
+            'DELETE FROM Channels WHERE serverCode = $1',
             [serverCode]
         );
 
+        // Delete all user permissions
         await pool.query(
-            `DELETE FROM Servers WHERE code = $1`,
+            'DELETE FROM UserPermissionsInServer WHERE code = $1',
+            [serverCode]
+        );
+
+        // Delete all user associations
+        await pool.query(
+            'DELETE FROM ServersToUsers WHERE code = $1',
+            [serverCode]
+        );
+
+        // Finally delete the server
+        await pool.query(
+            'DELETE FROM Servers WHERE code = $1',
             [serverCode]
         );
 
         await pool.query('COMMIT');
-        return res.status(200).json({ result: true });
+        res.json({ result: true });
     } catch (error) {
-        console.error("Error removing server:", error);
         await pool.query('ROLLBACK');
-        return res.status(400).json({ message: "Error removing server from database" });
+        console.error('Error removing server:', error);
+        res.status(500).json({ message: 'Failed to remove server' });
     }
 });
 
@@ -1496,6 +1510,16 @@ io.on("connection", (socket) => {
             username: data.username,
             message: data.message,
             messageId: data.messageId
+        });
+    });
+
+    socket.on("reaction", (data) => {
+        socket.to(data.roomId).emit("reactionUpdate", {
+            messageId: data.messageId,
+            reactionType: data.reactionType,
+            newCount: data.newCount,
+            hasReacted: data.hasReacted,
+            reactingUser: data.reactingUser
         });
     });
 

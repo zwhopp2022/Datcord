@@ -178,13 +178,7 @@ function loadChannels() {
                 let channelDiv = document.createElement("div");
                 channelDiv.classList.add("channel-item");
 
-                let channelName = document.createElement("span");
-                channelName.textContent = `${channel.name} (Level ${channel.permissionlevel})`;
-                channelName.classList.add("channel-name");
-
-                channelDiv.appendChild(channelName);
-
-                // Add delete button for users with permission level 4 or 5
+                // Add delete button first for users with permission level 4 or 5
                 if (currentUserPermission >= 4) {
                     let deleteButton = document.createElement("button");
                     deleteButton.classList.add("delete-btn");
@@ -195,6 +189,12 @@ function loadChannels() {
                     });
                     channelDiv.appendChild(deleteButton);
                 }
+
+                // Then add channel name
+                let channelName = document.createElement("span");
+                channelName.textContent = `${channel.name} (Level ${channel.permissionlevel})`;
+                channelName.classList.add("channel-name");
+                channelDiv.appendChild(channelName);
 
                 channelDiv.addEventListener("click", () => {
                     let iframe = document.getElementById("current-channel");

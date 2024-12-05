@@ -30,6 +30,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     clearDivAndMakeNewChatButtons();
 
+    clearDivAndMakeNewServerButtons();
 });
 
 function createAndInsertChat(username, code) {
@@ -430,27 +431,13 @@ function clearDivAndMakeNewChatButtons() {
     newGroupChatButton.classList.add("chat-btn");
     newGroupChatButton.textContent = "New Group Chat";
 
-    let newServerButton = document.createElement("button");
-    newServerButton.id = "server-button";
-    newServerButton.classList.add("chat-btn");
-    newServerButton.textContent = "New Server";
-    
-    let joinServerButton = document.createElement("button");
-    joinServerButton.id = "server-button";
-    joinServerButton.classList.add("chat-btn");
-    joinServerButton.textContent = "Join Server";
-
     newDirectMessageButton.addEventListener("click", promptNewDirectMessageChat);
     newGroupChatButton.addEventListener("click", promptNewGroupChat);
-    newServerButton.addEventListener("click", promptNewServer);
-    joinServerButton.addEventListener("click", promptJoinServer);
 
     let messageContainer = document.createElement("div");
     messageContainer.id = "message-container";
     newChatContainer.appendChild(newDirectMessageButton);
     newChatContainer.appendChild(newGroupChatButton);
-    newChatContainer.appendChild(newServerButton);
-    newChatContainer.appendChild(joinServerButton)
     newChatContainer.appendChild(messageContainer);
 }
 
@@ -722,6 +709,31 @@ function renderServerInMainContent(event) {
     iframe.onerror = (error) => {
         showMessage("Failed to load Server", "error");
     };
+}
+
+function clearDivAndMakeNewServerButtons() {
+    let newServerContainer = document.getElementById("new-server");
+    while (newServerContainer.firstChild) {
+        newServerContainer.removeChild(newServerContainer.firstChild);
+    }
+
+    let newServerButton = document.createElement("button");
+    newServerButton.id = "server-button";
+    newServerButton.classList.add("chat-btn");
+    newServerButton.textContent = "New Server";
+    newServerButton.style.width = "75%";
+    
+    let joinServerButton = document.createElement("button");
+    joinServerButton.id = "join-server-button";
+    joinServerButton.classList.add("chat-btn");
+    joinServerButton.textContent = "Join Server";
+    joinServerButton.style.width = "75%";
+
+    newServerButton.addEventListener("click", promptNewServer);
+    joinServerButton.addEventListener("click", promptJoinServer);
+
+    newServerContainer.appendChild(newServerButton);
+    newServerContainer.appendChild(joinServerButton);
 }
 
 

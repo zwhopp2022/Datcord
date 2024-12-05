@@ -274,7 +274,7 @@ async function handleReaction(messageUsername, message, roomId, reactionType, me
             },
             credentials: 'include',
             body: JSON.stringify({
-                messageId: messageId,
+                messageId: parseInt(messageId),
                 roomCode: roomId,
                 reactionType: reactionType,
                 reactingUser: username
@@ -285,6 +285,16 @@ async function handleReaction(messageUsername, message, roomId, reactionType, me
             const result = await response.json();
             if (result.success) {
                 updateReactionDisplay(messageId, reactionType, result.newCount, result.hasReacted);
+                socket.emit('reaction', {
+                    messageId,
+                    roomId,
+                    reactionType,
+                    newCount: result.newCount,
+                    hasReacted: result.hasReacted,
+                    sentBy: messageUsername,
+                    sentMessage: message,
+                    reactingUser: username
+                });
             }
         }
     } catch (error) {
@@ -342,23 +352,18 @@ async function loadReactionCounts(messageUsername, message, roomId, messageEleme
 
 // Add socket listener for reaction updates
 socket.on('reactionUpdate', (data) => {
-    const { sentBy, sentMessage, reactionType, newCount, hasReacted, reactingUser } = data;
-    const messageElements = document.querySelectorAll('.message-item');
+    const { messageId, reactionType, newCount, hasReacted, reactingUser } = data;
+    const messageElement = document.querySelector(`.message-item[data-messageid="${messageId}"]`);
+    if (messageElement) {
+        const reactionButton = messageElement.querySelector(`button[data-reaction-type="${reactionType}"]`);
+        if (reactionButton) {
+            const countSpan = reactionButton.querySelector('.reaction-count');
+            countSpan.textContent = newCount;
 
-    for (let element of messageElements) {
-        if (element.dataset.username === sentBy &&
-            element.dataset.message === sentMessage) {
-            const reactionButton = element.querySelector(`button[data-reaction-type="${reactionType}"]`);
-            if (reactionButton) {
-                const countSpan = reactionButton.querySelector('.reaction-count');
-                countSpan.textContent = newCount;
-
-                // Only update the active state if this is the current user's reaction
-                if (reactingUser === username) {
-                    reactionButton.classList.toggle('active', hasReacted);
-                }
+            // Only update the active state if this is the current user's reaction
+            if (reactingUser === username) {
+                reactionButton.classList.toggle('active', hasReacted);
             }
-            break;
         }
     }
 });

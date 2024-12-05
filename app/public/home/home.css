@@ -113,6 +113,8 @@ body {
     width: 100%;
     background-color: #1c1c1c;
     padding: 5px;
+    padding-left: 20px;
+    border-radius: 5px;
 }
 
 #banner-title {
@@ -146,8 +148,9 @@ body {
     display: flex;
     flex-direction: column;
     width: 100%;
-    background-color: #f1f1f1;
+    background-color: #1c1c1c;
     padding: 5px;
+    align-items: center;
 }
 
 .chats {
@@ -295,4 +298,23 @@ input[disabled] {
     background-color: #f9f9f9;
     display: inline-block;
     vertical-align: top;
+}
+
+.new-server-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    background-color: #1c1c1c;
+    padding: 5px;
+    align-items: center;
+}
+
+#left-panel-server-header {
+    padding: 5%;
+    text-align: center;
+}
+
+#left-panel-header {
+    padding: 5%;
+    text-align: center;
 }
