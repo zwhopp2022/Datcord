@@ -56,6 +56,7 @@ app.use(cors({
 
 let authorize = async (req, res, next) => {
     let noVerificationPaths = ["/", "/add-user", "/login", "/register", "/add-friend", "/create-server"];
+    console.log(`Path: ${req.path}`);
     if (noVerificationPaths.includes(req.path)) {
         return next();
     }
