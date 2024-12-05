@@ -1,4 +1,4 @@
-const pg = require("pg");
+const { Pool } = require("pg");
 const express = require("express");
 const bcrypt = require('bcrypt');
 const cookieParser = require("cookie-parser");
@@ -21,14 +21,15 @@ if (process.env.NODE_ENV == "production") {
     console.log(process.env.DATABASE_URL);
     host = "0.0.0.0";
     databaseConfig = { connectionString: process.env.DATABASE_URL };
+    console.log(databaseConfig);
 } else {
     host = "localhost";
 }
 
 //const env = require("../appsettings.json");
-const Pool = pg.Pool;
+// const Pool = pg.Pool;
 const pool = new Pool(databaseConfig);
-await pool.connect().then(function () {
+pool.connect().then(function () {
     console.log(`CONNECTED TO DATABASE!!!!!!`);
 });
 let server = http.createServer(app);
