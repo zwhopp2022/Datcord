@@ -60,7 +60,9 @@ let authorize = async (req, res, next) => {
         return next();
     }
     let { token, username } = req.cookies;
+    console.log(username);
     let storedToken = await getToken(username);
+    console.log(`storedToken: ${storedToken}`);
     let verified = await bcrypt.compare(token, storedToken);
     if (token === undefined || !(verified)) {
         console.log("not allowed");
