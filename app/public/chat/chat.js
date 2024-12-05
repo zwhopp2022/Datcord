@@ -146,16 +146,7 @@ function appendMessage(messageUsername, message, messageId, isSelf = false) {
             })
         }).then(response => response.json())
         .then(data => {
-            // if (data.result) {
-            //     input.value = "";
-            //     appendMessage(username, message, data.messageId, true);
-            //     socket.emit("message", {
-            //         username: username,
-            //         message: message,
-            //         messageId: data.messageId,
-            //         roomId: roomId
-            //     });
-            // }
+            // nothing to see here :D
         }).catch(error => {
             console.log(error.message);
         });
