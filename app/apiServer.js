@@ -12,7 +12,8 @@ const path = require("path");
 
 const app = express();
 
-
+let databaseConfig;
+let host;
 const port = 3000;
 const hostname = "https://datcord.fly.dev/";
 if (process.env.NODE_ENV == "production") {
@@ -28,7 +29,7 @@ if (process.env.NODE_ENV == "production") {
 const Pool = pg.Pool;
 const pool = new Pool(databaseConfig);
 pool.connect().then(function () {
-    console.log(`Connected to database`);
+    console.log(`CONNECTED TO DATABASE!!!!!!`);
 });
 let server = http.createServer(app);
 let io = new Server(server, {
