@@ -99,7 +99,7 @@ function extractCreateDirectMessageTitle(title) {
 
 function renderChatsInPanel() {
     chatSection.innerHTML = '';
-    fetch(`http://localhost:3000/get-chats?username=${currentUser}`, {
+    fetch(`https://datcord.fly.dev/get-chats?username=${currentUser}`, {
         headers: {
             'Authorization': `Bearer ${token}`,
             "Content-Type": "application/json"
@@ -117,7 +117,7 @@ function renderChatsInPanel() {
 
 function renderServersInPanel() {
     serverSection.innerHTML = '';
-    fetch(`http://localhost:3000/get-servers?username=${currentUser}`, {
+    fetch(`https://datcord.fly.dev/get-servers?username=${currentUser}`, {
         headers: {
             'Authorization': `Bearer ${token}`,
             "Content-Type": "application/json"
@@ -358,7 +358,7 @@ function promptJoinServer() {
 
         let isAlreadyMember = false;
 
-        fetch(`http://localhost:3000/get-servers?username=${currentUser}`, {
+        fetch(`https://datcord.fly.dev/get-servers?username=${currentUser}`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 "Content-Type": "application/json"
@@ -378,7 +378,7 @@ function promptJoinServer() {
             }
 
             if (!isAlreadyMember) {
-                fetch("http://localhost:3000/join-server", {
+                fetch("https://datcord.fly.dev/join-server", {
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         "Content-Type": "application/json",
@@ -462,7 +462,7 @@ function makeNewServer(serverName, createdBy) {
         return;
     }
 
-    fetch ("http://localhost:3000/create-server", {
+    fetch ("https://datcord.fly.dev/create-server", {
         headers: {
             'Authorization': `Bearer ${token}`,
             "Content-Type": "application/json",
@@ -503,7 +503,7 @@ function makeNewChat(type, title, usernames) {
         const directMessageTitle = `${currentUser} ${targetUsername}`;
 
         // Proceed to create the direct message chat
-        fetch("http://localhost:3000/create-direct-message", {
+        fetch("https://datcord.fly.dev/create-direct-message", {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 "Content-Type": "application/json",
@@ -530,7 +530,7 @@ function makeNewChat(type, title, usernames) {
     } else if (type === "group-chat") {
         // For group chats, validate and proceed
         if (usernames.length > 0 && title !== '') {
-            fetch("http://localhost:3000/create-group-message", {
+            fetch("https://datcord.fly.dev/create-group-message", {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     "Content-Type": "application/json",
@@ -564,7 +564,7 @@ function removeChat(event) {
 
     let roomId = parentDiv.id;
     
-    fetch("http://localhost:3000/remove-chat", {
+    fetch("https://datcord.fly.dev/remove-chat", {
         method: "POST",
         headers: {
             'Authorization': `Bearer ${token}`,
@@ -592,7 +592,7 @@ function removeServer(event) {
 
     let permissionLevel = null;
 
-    fetch(`http://localhost:3000/get-permission?username=${currentUser}&serverCode=${serverCode}`, {
+    fetch(`https://datcord.fly.dev/get-permission?username=${currentUser}&serverCode=${serverCode}`, {
         headers: {
             'Authorization': `Bearer ${token}`,
             "Content-Type": "application/json"
@@ -607,7 +607,7 @@ function removeServer(event) {
     }).then(body => {
         permissionLevel = body["permission"];
         if (permissionLevel === 5) {
-            fetch("http://localhost:3000/remove-server", {
+            fetch("https://datcord.fly.dev/remove-server", {
                 method: "POST",
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -628,7 +628,7 @@ function removeServer(event) {
                 }
             }).catch(error => showMessage(error.message, "error"));
         } else {
-            fetch("http://localhost:3000/leave-server", {
+            fetch("https://datcord.fly.dev/leave-server", {
                 method: "POST",
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -672,7 +672,7 @@ function renderChatInMainContent(event) {
 
     const iframe = document.getElementById("current-chat");
 
-    iframe.src = `http://localhost:3000/home/chat?roomId=${roomId}`;
+    iframe.src = `https://datcord.fly.dev/home/chat?roomId=${roomId}`;
 
     iframe.onload = () => {
         console.log(`Loaded chat room with roomId: ${roomId}`);
@@ -700,7 +700,7 @@ function renderServerInMainContent(event) {
 
     const iframe = document.getElementById("current-chat");
 
-    iframe.src = `http://localhost:3000/home/server?serverCode=${serverCode}&serverName=${serverName}`;
+    iframe.src = `https://datcord.fly.dev/home/server?serverCode=${serverCode}&serverName=${serverName}`;
 
     iframe.onload = () => {
         console.log(`Loaded Server with code: ${serverCode}`);

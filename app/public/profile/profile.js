@@ -26,7 +26,7 @@ function getCookie(name) {
 
 async function fetchUser(username, token) {
     try {
-        const response = await fetch(`http://localhost:3000/get-user?username=${username}`, {
+        const response = await fetch(`https://datcord.fly.dev/get-user?username=${username}`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 "Content-Type": "application/json"
@@ -104,7 +104,7 @@ async function saveProfileData() {
     };
 
     try {
-        const response = await fetch('http://localhost:3000/modify-user', {
+        const response = await fetch('https://datcord.fly.dev/modify-user', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

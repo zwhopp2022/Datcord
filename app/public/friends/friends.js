@@ -19,7 +19,7 @@ document.addEventListener("click", () => {
 searchButton.addEventListener("click", (event) => {
     let searchTarget = searchBar.value;
 
-    fetch(`http://localhost:3000/search-user?username=${searchTarget}`, {
+    fetch(`https://datcord.fly.dev/search-user?username=${searchTarget}`, {
         headers: {
             'Authorization': `Bearer ${token}`,
             "Content-Type": "application/json"
@@ -35,7 +35,7 @@ searchButton.addEventListener("click", (event) => {
         let userWasFound = body["result"];
 
         if (userWasFound) {
-            fetch(`http://localhost:3000/search-friends?username=${currentUser}&searchTarget=${searchTarget}`, {
+            fetch(`https://datcord.fly.dev/search-friends?username=${currentUser}&searchTarget=${searchTarget}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     "Content-Type": "application/json"
@@ -108,7 +108,7 @@ function goBack() {
 
 // usernameTwo should be currentUser for most calls
 function sendFriendRequest(usernameOne, usernameTwo) {
-    fetch("http://localhost:3000/add-friend", {
+    fetch("https://datcord.fly.dev/add-friend", {
         method: "POST",
         headers: {
             'Authorization': `Bearer ${token}`,
@@ -140,7 +140,7 @@ function sendFriendRequest(usernameOne, usernameTwo) {
 
 // usernameTwo should be currentUser for most calls
 function acceptRequest(usernameOne, usernameTwo) {
-    fetch("http://localhost:3000/accept-friend-request", {
+    fetch("https://datcord.fly.dev/accept-friend-request", {
         method: "POST",
         headers: {
             'Authorization': `Bearer ${token}`,
@@ -173,7 +173,7 @@ function acceptRequest(usernameOne, usernameTwo) {
 
 // usernameTwo should be currentUser for most calls
 function declineRequest(usernameOne, usernameTwo) {
-    fetch("http://localhost:3000/remove-friend", {
+    fetch("https://datcord.fly.dev/remove-friend", {
         method: "POST",
         headers: {
             'Authorization': `Bearer ${token}`,
@@ -295,7 +295,7 @@ async function fetchFriendsAndRequests(username, token) {
     }
 
     try {
-        let friendsResponse = await fetch(`http://localhost:3000/get-friends?username=${username}`, {
+        let friendsResponse = await fetch(`https://datcord.fly.dev/get-friends?username=${username}`, {
             method: 'GET',  // Specify the method (GET)
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -314,7 +314,7 @@ async function fetchFriendsAndRequests(username, token) {
             console.log("Failed to fetch friends:", await friendsResponse.text());
         }
 
-        let requestsResponse = await fetch(`http://localhost:3000/get-friend-requests?username=${username}`, {
+        let requestsResponse = await fetch(`https://datcord.fly.dev/get-friend-requests?username=${username}`, {
             method: 'GET',  // Specify the method (GET)
             headers: {
                 'Authorization': `Bearer ${token}`,
