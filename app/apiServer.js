@@ -28,10 +28,14 @@ if (process.env.NODE_ENV == "production") {
 
 //const env = require("../appsettings.json");
 // const Pool = pg.Pool;
-const pool = new Pool(databaseConfig);
-pool.connect().then(function () {
-    console.log(`CONNECTED TO DATABASE!!!!!!`);
-});
+try {
+    const pool = new Pool(databaseConfig);
+    pool.connect().then(function () {
+        console.log(`CONNECTED TO DATABASE!!!!!!`);
+    });
+} catch (error) {
+    console.log(error);
+}
 let server = http.createServer(app);
 let io = new Server(server, {
     cors: {
