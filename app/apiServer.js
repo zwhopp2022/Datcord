@@ -1322,7 +1322,6 @@ app.get("/get-permission", async (req, res) => {
     }
 });
 
-// API endpoint to handle message reactions
 app.post("/react-to-message", async (req, res) => {
     try {
         const { messageId, roomCode, reactionType, reactingUser } = req.body;
@@ -1334,7 +1333,6 @@ app.post("/react-to-message", async (req, res) => {
             });
         }
 
-        // Map camelCase reaction types to lowercase database column names
         const columnMap = {
             'thumbsUp': 'thumbsup',
             'thumbsDown': 'thumbsdown',
@@ -1342,17 +1340,14 @@ app.post("/react-to-message", async (req, res) => {
             'eggplant': 'eggplant'
         };
 
-        // Validate the reaction type
         if (!columnMap[reactionType]) {
             return res.status(400).json({ success: false, error: 'Invalid reaction type' });
         }
 
         const columnName = columnMap[reactionType];
 
-        // Begin transaction
         await pool.query('BEGIN');
 
-        // Check if user has already reacted
         const existingReaction = await pool.query(
             `SELECT id FROM MessageReactions 
              WHERE message_id = $1
@@ -1374,14 +1369,12 @@ app.post("/react-to-message", async (req, res) => {
         }
 
         if (existingReaction.rows.length > 0) {
-            // User has already reacted - remove their reaction
             await pool.query(
                 `DELETE FROM MessageReactions 
                  WHERE message_id = $1 AND reaction_type = $2 AND username = $3`,
                 [messageId, columnName, reactingUser]
             );
 
-            // Decrease the count in Messages table
             const updateResult = await pool.query(
                 `UPDATE Messages 
                  SET ${columnName} = ${columnName} - 1 
@@ -1391,14 +1384,12 @@ app.post("/react-to-message", async (req, res) => {
             );
             newCount = updateResult.rows[0].newCount;
         } else {
-            // User hasn't reacted - add their reaction
             await pool.query(
                 `INSERT INTO MessageReactions (message_id, reaction_type, username) 
                  VALUES ($1, $2, $3)`,
                 [messageId, columnName, reactingUser]
             );
 
-            // Increase the count in Messages table
             const updateResult = await pool.query(
                 `UPDATE Messages 
                  SET ${columnName} = ${columnName} + 1 
@@ -1444,7 +1435,6 @@ app.post("/react-to-message", async (req, res) => {
     }
 });
 
-// API endpoint to get reaction counts and user's reaction status
 app.post("/get-reaction-counts", async (req, res) => {
     try {
         const { sentBy, sentMessage, roomCode, currentUser } = req.body;
@@ -1466,7 +1456,6 @@ app.post("/get-reaction-counts", async (req, res) => {
         const messageId = messageResult.rows[0].id;
         const counts = messageResult.rows[0];
 
-        // Get user's reactions
         const userReactions = await pool.query(
             `SELECT reaction_type FROM MessageReactions 
              WHERE message_id = $1 AND username = $2`,
@@ -1474,7 +1463,6 @@ app.post("/get-reaction-counts", async (req, res) => {
         );
 
         const userReactionTypes = userReactions.rows.map(row => {
-            // Map database column names back to camelCase
             const columnToReaction = {
                 'thumbsup': 'thumbsUp',
                 'thumbsdown': 'thumbsDown',
@@ -1496,26 +1484,26 @@ app.post("/get-reaction-counts", async (req, res) => {
     }
 });
 
-// Socket.io connection handling
-io.on('connection', (socket) => {
+io.on("connection", (socket) => {
     const roomId = socket.handshake.query.roomId;
-    console.log(`Client connected to room ${roomId}`);
-
     if (roomId) {
         socket.join(roomId);
         console.log(`Socket ${socket.id} joined room ${roomId}`);
     }
 
-    socket.on('disconnect', () => {
+    socket.on("message", (data) => {
+        socket.to(data.roomId).emit("messageBroadcast", {
+            username: data.username,
+            message: data.message,
+            messageId: data.messageId
+        });
+    });
+
+    socket.on("disconnect", () => {
         if (roomId) {
             socket.leave(roomId);
             console.log(`Socket ${socket.id} left room ${roomId}`);
         }
-    });
-
-    socket.on("messageBroadcast", async (data) => {
-        const { message, username, messageId } = data;
-        socket.to(roomId).emit("messageBroadcast", { message, username, messageId });
     });
 });
 
@@ -1523,4 +1511,138 @@ io.on('connection', (socket) => {
 //  server startup
 server.listen(port, hostname, () => {
     console.log(`Listening at: http://${hostname}:${port}`);
+});
+
+function validateCreateChannelRequest(body) {
+    if (
+        body.hasOwnProperty("channelName") &&
+        body.hasOwnProperty("serverCode") &&
+        body.hasOwnProperty("permissionLevel")
+    ) {
+        if (
+            (body["channelName"].length >= 1 && body["channelName"].length <= 40) &&
+            (body["serverCode"].length === 4) &&
+            (body["permissionLevel"] >= 1 && body["permissionLevel"] <= 5)
+        ) {
+            return true;
+        }
+    }
+    return false;
+}
+
+app.post("/create-channel", async (req, res) => {
+    let body = req.body;
+    let { username } = req.cookies;
+
+    if (!validateCreateChannelRequest(body)) {
+        return res.status(400).json({ message: "Invalid request format" });
+    }
+
+    let { channelName, serverCode, permissionLevel } = body;
+
+    try {
+        let permResult = await pool.query(
+            `SELECT permission FROM UserPermissionsInServer 
+             WHERE username = $1 AND code = $2`,
+            [username, serverCode]
+        );
+
+        if (!permResult.rows.length || permResult.rows[0].permission < 4) {
+            return res.status(403).json({ message: "Insufficient permissions" });
+        }
+
+        let roomId = await generateRoomCode();
+        await saveRoom(roomId);
+
+        await pool.query(
+            `INSERT INTO Channels (serverCode, name, permissionLevel, roomId)
+             VALUES ($1, $2, $3, $4)`,
+            [serverCode, channelName, permissionLevel, roomId]
+        );
+
+        return res.status(200).json({ roomId });
+    } catch (error) {
+        console.error("Error creating channel:", error);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+});
+
+app.get("/get-channels", async (req, res) => {
+    let { serverCode } = req.query;
+    let { username } = req.cookies;
+
+    if (!serverCode || serverCode.length !== 4) {
+        return res.status(400).json({ message: "Invalid server code" });
+    }
+
+    try {
+        let permResult = await pool.query(
+            `SELECT permission FROM UserPermissionsInServer 
+             WHERE username = $1 AND code = $2`,
+            [username, serverCode]
+        );
+
+        if (!permResult.rows.length) {
+            return res.status(403).json({ message: "User not in server" });
+        }
+
+        let userPermLevel = permResult.rows[0].permission;
+
+        let channels = await pool.query(
+            `SELECT * FROM Channels 
+             WHERE serverCode = $1 AND permissionLevel <= $2
+             ORDER BY permissionLevel ASC, name ASC`,
+            [serverCode, userPermLevel]
+        );
+
+        return res.status(200).json({ channels: channels.rows });
+    } catch (error) {
+        console.error("Error fetching channels:", error);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+});
+
+app.delete("/delete-channel", async (req, res) => {
+    let { roomId, serverCode } = req.body;
+    let { username } = req.cookies;
+
+    if (!roomId || !serverCode) {
+        return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    try {
+        let permResult = await pool.query(
+            `SELECT permission FROM UserPermissionsInServer 
+             WHERE username = $1 AND code = $2`,
+            [username, serverCode]
+        );
+
+        if (!permResult.rows.length || permResult.rows[0].permission < 4) {
+            return res.status(403).json({ message: "Insufficient permissions" });
+        }
+
+        await pool.query('BEGIN');
+
+        await pool.query(
+            `DELETE FROM Channels WHERE roomId = $1 AND serverCode = $2`,
+            [roomId, serverCode]
+        );
+
+        await pool.query(
+            `DELETE FROM Messages WHERE roomCode = $1`,
+            [roomId]
+        );
+
+        await pool.query(
+            `DELETE FROM Rooms WHERE code = $1`,
+            [roomId]
+        );
+
+        await pool.query('COMMIT');
+        return res.status(200).json({ success: true });
+    } catch (error) {
+        await pool.query('ROLLBACK');
+        console.error("Error deleting channel:", error);
+        return res.status(500).json({ message: "Internal server error" });
+    }
 });

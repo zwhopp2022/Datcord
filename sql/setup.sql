@@ -11,6 +11,7 @@ DROP TABLE MessageReactions CASCADE;
 DROP TABLE Servers CASCADE;
 DROP TABLE ServersToUsers CASCADE;
 DROP TABLE UserPermissionsInServer CASCADE;
+DROP TABLE Channels CASCADE;
 
 -- table for Users 
 CREATE TABLE IF NOT EXISTS Users (
@@ -59,6 +60,16 @@ CREATE TABLE IF NOT EXISTS Servers (
     id SERIAL PRIMARY KEY,
     name VARCHAR(40) NOT NULL,
     code VARCHAR(4) NOT NULL UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS Channels (
+    id SERIAL PRIMARY KEY,
+    serverCode VARCHAR(4) NOT NULL,
+    name VARCHAR(40) NOT NULL,
+    permissionLevel INT DEFAULT 1,
+    roomId VARCHAR(4) NOT NULL UNIQUE,
+    FOREIGN KEY (serverCode) REFERENCES Servers(code),
+    FOREIGN KEY (roomId) REFERENCES Rooms(code)
 );
 
 CREATE TABLE IF NOT EXISTS ServersToUsers (

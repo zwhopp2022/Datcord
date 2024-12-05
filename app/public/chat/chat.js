@@ -159,51 +159,36 @@ function getCookie(name) {
 }
 
 button.addEventListener("click", () => {
-    let message = input.value;
-    if (message.trim() === "") {
-        return;
+    let message = input.value.trim();
+    if (message) {
+        fetch("http://localhost:3000/save-message", {
+            method: "POST",
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                "Content-Type": "application/json"
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                sentMessage: message,
+                sentBy: username,
+                roomCode: roomId
+            })
+        }).then(response => response.json())
+        .then(data => {
+            if (data.result) {
+                input.value = "";
+                appendMessage(username, message, data.messageId, true);
+                socket.emit("message", {
+                    username: username,
+                    message: message,
+                    messageId: data.messageId,
+                    roomId: roomId
+                });
+            }
+        }).catch(error => {
+            console.log(error.message);
+        });
     }
-
-    const username = getCookie("username");
-
-    input.value = "";
-    fetch(`http://localhost:3000/save-message`, {
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            "Content-Type": "application/json",
-        },
-        method: "POST",
-        credentials: 'include',
-        body: JSON.stringify({
-            "sentMessage": message,
-            "sentBy": username,
-            "roomCode": roomId
-        })
-    }).then(response => {
-        if (response.ok && response.headers.get("Content-Type")?.includes("application/json")) {
-            return response.json();
-        } else {
-            return response.text();
-        }
-    }).then(body => {
-        if (body["result"]) {
-            // handle sent status
-            console.log(body);
-            let messageId = body.messageId;
-            console.log(messageId);
-            socket.emit("messageBroadcast", {
-                message: message,
-                username: username,
-                roomId: roomId,
-                messageId: messageId
-            });
-            appendMessage(username, message, messageId, true);
-        } else {
-            // handle error status
-        }
-    }).catch(error => {
-        console.log(error.message);
-    });
 });
 
 input.addEventListener("keypress", (e) => {
@@ -391,7 +376,7 @@ function getEmojiForReactionType(type) {
 function getReactionTypeFromEmoji(emoji) {
     const typeMap = {
         '👍': 'thumbsUp',
-        '����': 'thumbsDown',
+        '': 'thumbsDown',
         '😐': 'neutralFace',
         '🍆': 'eggplant'
     };
