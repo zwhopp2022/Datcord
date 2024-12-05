@@ -1598,8 +1598,8 @@ io.on("connection", (socket) => {
 
 
 //  server startup
-server.listen(port, hostname, () => {
-    console.log(`Listening at: http://${hostname}:${port}`);
+server.listen(port, host, () => {
+    console.log(`Listening at: http://${host}:${port}`);
 });
 
 function validateCreateChannelRequest(body) {
