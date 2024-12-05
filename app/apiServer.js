@@ -13,12 +13,12 @@ const path = require("path");
 const app = express();
 
 
-const port = 3000;
-const hostname = "localhost";
+const port = process.env.PORT || 3000;
+const hostname = "https://datcord.fly.dev/";
 
 const env = require("../appsettings.local.json");
 const Pool = pg.Pool;
-const pool = new Pool(env);
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 let server = http.createServer(app);
 let io = new Server(server, {
     cors: {
@@ -58,6 +58,65 @@ let cookieOptions = {
     secure: true, // prevents packet sniffing by using https
     sameSite: "strict", // only include this cookie on requests to the same domain
 };
+
+app.use((req, res, next) => {
+    const { token } = req.cookies;
+    const normalizedPath = req.path.replace(/\/$/, '');
+    const publicRoutes = ['/login', '/register', '/set-cookie'];
+  
+    if (publicRoutes.includes(normalizedPath)) {
+      return next();
+    }
+  
+    if (!token) {
+      console.log("No token found, redirecting to /login");
+      return res.redirect('/login');
+    }
+  
+    next();
+  });
+  
+  // all main route handlers
+  
+  app.get('/', (req, res) => {
+    res.redirect('/home');
+  });
+  
+  app.get('/profile', (req, res) => {
+    res.sendFile(path.resolve(__dirname, 'public', 'profile', 'profile.html')); 
+  });
+  
+  app.get('/friends', (req, res) => {
+    res.sendFile(path.resolve(__dirname, 'public', 'friends', 'friends.html')); 
+  });
+  
+  app.get('/home', (req, res) => {
+    res.sendFile(path.resolve(__dirname, 'public', 'home', 'home.html')); 
+  });
+  
+  app.get('/login', (req, res) => {
+    res.sendFile(path.resolve(__dirname, 'public', 'login', 'login.html')); 
+  });
+  
+  app.get('/register', (req, res) => {
+    res.sendFile(path.resolve(__dirname, 'public', 'register', 'register.html')); 
+  });
+  
+  app.get("/home/chat", (req, res) => {
+    let roomId = req.query.roomId;
+    console.log(roomId);
+    if (!searchRoom(roomId)) {
+        return res.status(404).send();
+    }
+    console.log("Sending room", roomId);
+    res.sendFile(path.resolve(__dirname, 'public', 'chat', 'chat.html'));
+  });
+  
+  app.get("/permissions", (req, res) => {
+    let serverCode = req.query.serverCode;
+    console.log("Loading permissions for", serverCode);
+    res.sendFile(path.resolve(__dirname, 'public', 'permissions', 'permissions.html'));
+  });
 
 function makeToken() {
     return crypto.randomBytes(32).toString("hex");
@@ -287,7 +346,7 @@ async function updateFriendsTableUsername(oldUsername, newUsername) {
 
 // startup connections and middleware
 pool.connect().then(function () {
-    console.log(`Connected to database ${env.database}`);
+    console.log(`Connected to database`);
 });
 
 // API ENDPOINTS FOR USER CREATION AND MODIFICATION

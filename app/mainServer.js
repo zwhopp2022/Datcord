@@ -11,17 +11,19 @@ const app = express();
 const port = 3001;
 const hostname = "localhost";
 
+const { searchRoom } = require("./apiServer.js");
+
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: "http://localhost:3000",
+        origin: "https://datcord.fly.dev/",
         methods: ["GET", "POST"],
         credentials: true
     }
 });
 
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: 'https://datcord.fly.dev/',
   credentials: true
 }));
 
