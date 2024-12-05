@@ -16,6 +16,7 @@ const app = express();
 const port = 3000;
 const hostname = "https://datcord.fly.dev/";
 if (process.env.NODE_ENV == "production") {
+    console.log("ENV IS PRODUCTION!!!!");
 	host = "0.0.0.0";
 	databaseConfig = { connectionString: process.env.DATABASE_URL };
 } else {
