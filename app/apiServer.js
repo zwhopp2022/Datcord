@@ -1141,6 +1141,28 @@ app.post("/save-message", (req, res) => {
     }
 });
 
+app.post("/delete-message", async (req, res) => {
+    let body = req.body;
+
+    if (validateMessageText(body)) {
+        const { sentMessage, sentBy, roomCode } = body;
+
+        pool.query(
+            "DELETE FROM Messages WHERE sentMessage = $1 AND sentBy = $2 AND roomCode = $3 RETURNING id",
+            [sentMessage, sentBy, roomCode]
+        ).then(result => {
+            let messageId = result.rows[0].id;
+            res.status(200).json({ "result": true, "messageId": messageId });
+        }).catch(error => {
+            console.error("Error deleting message:", error.message);
+            res.status(500).json({ "message": "Internal server error" });
+        });
+
+    } else {
+        return res.status(400).json({ "message": "Missing or misformatted message information" });
+    }
+});
+
 
 app.post("/create-server", async (req, res) => {
     let body = req.body;

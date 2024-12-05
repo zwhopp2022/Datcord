@@ -54,6 +54,14 @@ function appendMessage(messageUsername, message, messageId, isSelf = false) {
     editButton.dataset.roomId = roomId;
     editButton.textContent = "✏️";
 
+    let deleteSpan = document.createElement("span");
+    deleteSpan.className = "message-edit";
+
+    let deleteButton = document.createElement("button");
+    deleteButton.className = "edit-button";
+    deleteButton.dataset.roomId = roomId;
+    deleteButton.textContent = "❌";
+
     editButton.addEventListener("click", () => {
         editButton.style.display = "none";
 
@@ -122,8 +130,41 @@ function appendMessage(messageUsername, message, messageId, isSelf = false) {
         item.insertBefore(interactiveEditSpan, reactionsDiv);
     });
 
+    deleteButton.addEventListener("click", () => {
+        item.remove();
+        fetch("http://localhost:3000/delete-message", {
+            method: "POST",
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                "Content-Type": "application/json"
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                sentMessage: message,
+                sentBy: username,
+                roomCode: roomId
+            })
+        }).then(response => response.json())
+        .then(data => {
+            // if (data.result) {
+            //     input.value = "";
+            //     appendMessage(username, message, data.messageId, true);
+            //     socket.emit("message", {
+            //         username: username,
+            //         message: message,
+            //         messageId: data.messageId,
+            //         roomId: roomId
+            //     });
+            // }
+        }).catch(error => {
+            console.log(error.message);
+        });
+    });
+
+
     if (messageUsername === username) {
         editSpan.appendChild(editButton);
+        editSpan.appendChild(deleteButton);
     }
     reactionsDiv.appendChild(editSpan);
 
