@@ -20,7 +20,7 @@ if (process.env.NODE_ENV == "production") {
     console.log("ENV IS PRODUCTION!!!!");
     console.log(process.env.DATABASE_URL);
     host = "0.0.0.0";
-    databaseConfig = { connectionString: process.env.DATABASE_URL };
+    databaseConfig = { connectionString: `postgres://postgres:${process.env.DATABASE_URL}@postgresql://datcord-db.flycast:5432/datcord` };
     console.log(databaseConfig);
 } else {
     host = "localhost";
