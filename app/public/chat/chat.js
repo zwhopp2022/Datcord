@@ -40,7 +40,7 @@ function appendMessage(messageUsername, message, messageId, isSelf = false) {
         reactionButton.innerHTML = `${reaction.emoji} <span class="reaction-count">0</span>`;
 
         reactionButton.addEventListener("click", () => {
-            handleReaction(username, message, roomId, reaction.type);
+            handleReaction(messageUsername, message, roomId, reaction.type, messageId);
         });
 
         reactionsDiv.appendChild(reactionButton);
@@ -257,6 +257,7 @@ socket.on('messageUpdate', (data) => {
     if (messageDiv) {
         let messageSpan = messageDiv.querySelector('.message-text');
         messageSpan.textContent = data.editedMessage;
+        messageDiv.dataset.message = data.editedMessage;
     }
 });
 
@@ -272,8 +273,14 @@ socket.on("connect", () => {
     });
 });
 
-async function handleReaction(messageUsername, message, roomId, reactionType) {
+async function handleReaction(messageUsername, message, roomId, reactionType, messageId) {
     try {
+        const messageElement = document.querySelector(`.message-item[data-messageid="${messageId}"]`);
+        if (!messageElement) {
+            console.error('Message element not found');
+            return;
+        }
+
         const response = await fetch(`http://localhost:3000/react-to-message`, {
             method: 'POST',
             headers: {
@@ -282,8 +289,7 @@ async function handleReaction(messageUsername, message, roomId, reactionType) {
             },
             credentials: 'include',
             body: JSON.stringify({
-                sentBy: messageUsername,
-                sentMessage: message,
+                messageId: messageId,
                 roomCode: roomId,
                 reactionType: reactionType,
                 reactingUser: username
@@ -293,7 +299,7 @@ async function handleReaction(messageUsername, message, roomId, reactionType) {
         if (response.ok) {
             const result = await response.json();
             if (result.success) {
-                updateReactionDisplay(messageUsername, message, reactionType, result.newCount, result.hasReacted);
+                updateReactionDisplay(messageId, reactionType, result.newCount, result.hasReacted);
             }
         }
     } catch (error) {
@@ -301,17 +307,14 @@ async function handleReaction(messageUsername, message, roomId, reactionType) {
     }
 }
 
-function updateReactionDisplay(messageUsername, message, reactionType, newCount, hasReacted) {
-    const messageElements = document.querySelectorAll('.message-item');
-    for (let element of messageElements) {
-        if (element.dataset.username === messageUsername &&
-            element.dataset.message === message) {
-            const reactionButton = element.querySelector(`button[data-reaction-type="${reactionType}"]`);
-            if (reactionButton) {
-                const countSpan = reactionButton.querySelector('.reaction-count');
-                countSpan.textContent = newCount;
-                reactionButton.classList.toggle('active', hasReacted);
-            }
+function updateReactionDisplay(messageId, reactionType, newCount, hasReacted) {
+    const messageElement = document.querySelector(`.message-item[data-messageid="${messageId}"]`);
+    if (messageElement) {
+        const reactionButton = messageElement.querySelector(`button[data-reaction-type="${reactionType}"]`);
+        if (reactionButton) {
+            const countSpan = reactionButton.querySelector('.reaction-count');
+            countSpan.textContent = newCount;
+            reactionButton.classList.toggle('active', hasReacted);
         }
     }
 }
@@ -388,7 +391,7 @@ function getEmojiForReactionType(type) {
 function getReactionTypeFromEmoji(emoji) {
     const typeMap = {
         '👍': 'thumbsUp',
-        '👎': 'thumbsDown',
+        '����': 'thumbsDown',
         '😐': 'neutralFace',
         '🍆': 'eggplant'
     };

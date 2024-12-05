@@ -1325,7 +1325,14 @@ app.get("/get-permission", async (req, res) => {
 // API endpoint to handle message reactions
 app.post("/react-to-message", async (req, res) => {
     try {
-        const { sentBy, sentMessage, roomCode, reactionType, reactingUser } = req.body;
+        const { messageId, roomCode, reactionType, reactingUser } = req.body;
+
+        if (!messageId || isNaN(messageId)) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Invalid message ID' 
+            });
+        }
 
         // Map camelCase reaction types to lowercase database column names
         const columnMap = {
@@ -1348,28 +1355,23 @@ app.post("/react-to-message", async (req, res) => {
         // Check if user has already reacted
         const existingReaction = await pool.query(
             `SELECT id FROM MessageReactions 
-             WHERE message_id = (
-                SELECT id FROM Messages 
-                WHERE sentBy = $1 AND sentMessage = $2 AND roomCode = $3
-             )
-             AND reaction_type = $4 
-             AND username = $5`,
-            [sentBy, sentMessage, roomCode, columnName, reactingUser]
+             WHERE message_id = $1
+             AND reaction_type = $2 
+             AND username = $3`,
+            [messageId, columnName, reactingUser]
         );
 
         let newCount;
         const messageResult = await pool.query(
             `SELECT id, ${columnName} as count FROM Messages 
-             WHERE sentBy = $1 AND sentMessage = $2 AND roomCode = $3`,
-            [sentBy, sentMessage, roomCode]
+             WHERE id = $1 AND roomCode = $2`,
+            [messageId, roomCode]
         );
 
         if (messageResult.rows.length === 0) {
             await pool.query('ROLLBACK');
             return res.status(404).json({ success: false, error: 'Message not found' });
         }
-
-        const messageId = messageResult.rows[0].id;
 
         if (existingReaction.rows.length > 0) {
             // User has already reacted - remove their reaction
@@ -1409,10 +1411,17 @@ app.post("/react-to-message", async (req, res) => {
 
         await pool.query('COMMIT');
 
+        // Get the message details for the socket event
+        const messageDetails = await pool.query(
+            `SELECT sentBy, sentMessage FROM Messages WHERE id = $1`,
+            [messageId]
+        );
+
         // Emit socket event for real-time updates
         io.to(roomCode).emit('reactionUpdate', {
-            sentBy,
-            sentMessage,
+            messageId,
+            sentBy: messageDetails.rows[0].sentby,
+            sentMessage: messageDetails.rows[0].sentmessage,
             roomCode,
             reactionType,
             newCount,

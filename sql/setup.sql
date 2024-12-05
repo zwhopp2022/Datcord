@@ -10,6 +10,7 @@ DROP TABLE Messages CASCADE;
 DROP TABLE MessageReactions CASCADE;
 DROP TABLE Servers CASCADE;
 DROP TABLE ServersToUsers CASCADE;
+DROP TABLE UserPermissionsInServer CASCADE;
 
 -- table for Users 
 CREATE TABLE IF NOT EXISTS Users (
