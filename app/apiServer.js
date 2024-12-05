@@ -13,12 +13,21 @@ const path = require("path");
 const app = express();
 
 
-const port = process.env.PORT || 3000;
+const port = 3000;
 const hostname = "https://datcord.fly.dev/";
+if (process.env.NODE_ENV == "production") {
+	host = "0.0.0.0";
+	databaseConfig = { connectionString: process.env.DATABASE_URL };
+} else {
+	host = "localhost";
+}
 
 const env = require("../appsettings.json");
 const Pool = pg.Pool;
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = new Pool(databaseConfig);
+pool.connect().then(function () {
+    console.log(`Connected to database`);
+});
 let server = http.createServer(app);
 let io = new Server(server, {
     cors: {
@@ -345,9 +354,6 @@ async function updateFriendsTableUsername(oldUsername, newUsername) {
 }
 
 // startup connections and middleware
-pool.connect().then(function () {
-    console.log(`Connected to database`);
-});
 
 // API ENDPOINTS FOR USER CREATION AND MODIFICATION
 
