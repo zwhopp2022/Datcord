@@ -28,7 +28,7 @@ if (process.env.NODE_ENV == "production") {
 //const env = require("../appsettings.json");
 const Pool = pg.Pool;
 const pool = new Pool(databaseConfig);
-pool.connect().then(function () {
+await pool.connect().then(function () {
     console.log(`CONNECTED TO DATABASE!!!!!!`);
 });
 let server = http.createServer(app);
