@@ -223,8 +223,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 });
 
-let socket = io('https://datcord.fly.dev', {
-    query: { roomId: roomId }
+const socket = io('https://datcord.fly.dev', {
+    query: { roomId: roomId },
+    transports: ['websocket'],
+    withCredentials: true
 });
 
 socket.on("connect", () => {
