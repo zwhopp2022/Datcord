@@ -1566,6 +1566,27 @@ app.post("/get-reaction-counts", async (req, res) => {
 
 io.on("connection", (socket) => {
     const roomId = socket.handshake.query.roomId;
+
+    socket.on('joinRoom', ({ roomId }) => {
+        if (roomId) {
+            socket.join(roomId);
+            console.log(`Socket ${socket.id} joined room ${roomId}`);
+        }
+    });
+
+    socket.on("message", (data) => {
+        if (!data.roomId) {
+            console.error('No roomId provided for message');
+            return;
+        }
+        socket.to(data.roomId).emit("messageBroadcast", {
+            username: data.username,
+            message: data.message,
+            messageId: data.messageId
+        });
+    });
+
+
     if (roomId) {
         socket.join(roomId);
         console.log(`Socket ${socket.id} joined room ${roomId}`);
