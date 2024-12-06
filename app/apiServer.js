@@ -17,11 +17,8 @@ let host;
 const port = 3000;
 const hostname = "https://datcord.fly.dev/";
 if (process.env.NODE_ENV == "production") {
-    console.log("ENV IS PRODUCTION!!!!");
-    console.log(process.env.DATABASE_URL);
     host = "0.0.0.0";
     databaseConfig = { connectionString: `postgres://postgres:${process.env.DATABASE_URL}@datcord-db.flycast:5432/datcord` };
-    console.log(databaseConfig);
 } else {
     host = "localhost";
 }
@@ -67,7 +64,7 @@ let authorize = async (req, res, next) => {
     let verified = await bcrypt.compare(token, storedToken);
     if (token === undefined || !(verified)) {
         console.log("not allowed");
-        return res.status(403).send("Not allowed");
+        return res.redirect('/login');
     }
     next();
 };
