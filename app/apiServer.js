@@ -79,22 +79,22 @@ let cookieOptions = {
     sameSite: "strict", // only include this cookie on requests to the same domain
 };
 
-app.use((req, res, next) => {
-    const { token } = req.cookies;
-    const normalizedPath = req.path.replace(/\/$/, '');
-    const publicRoutes = ['/login', '/register', '/set-cookie'];
+// app.use((req, res, next) => {
+//     const { token } = req.cookies;
+//     const normalizedPath = req.path.replace(/\/$/, '');
+//     const publicRoutes = ['/login', '/register', '/set-cookie'];
 
-    if (publicRoutes.includes(normalizedPath)) {
-        return next();
-    }
+//     if (publicRoutes.includes(normalizedPath)) {
+//         return next();
+//     }
 
-    if (!token) {
-        console.log("No token found, redirecting to /login");
-        return res.redirect('/login');
-    }
+//     if (!token) {
+//         console.log("No token found, redirecting to /login");
+//         return res.redirect('/login');
+//     }
 
-    next();
-});
+//     next();
+// });
 
 // all main route handlers
 
