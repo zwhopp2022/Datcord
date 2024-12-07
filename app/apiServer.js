@@ -1206,7 +1206,11 @@ app.get("/get-messages", async (req, res) => {
     }
 
     pool.query(
-        "SELECT * FROM Messages WHERE roomCode = $1 ORDER BY id ASC",
+        `SELECT id as messageid, sentMessage, sentBy, roomCode, 
+                thumbsup, thumbsdown, neutralface, eggplant 
+         FROM Messages 
+         WHERE roomCode = $1 
+         ORDER BY id ASC`,
         [roomId]
     ).then(result => {
         res.status(200).json({ "result": result.rows });
@@ -1473,25 +1477,26 @@ app.post("/react-to-message", async (req, res) => {
 
 app.post("/get-reaction-counts", async (req, res) => {
     try {
-        const { sentBy, sentMessage, roomCode, currentUser } = req.body;
+        const { messageId, roomCode, currentUser } = req.body;
 
+        // Get message reaction counts
         const messageResult = await pool.query(
             `SELECT id, thumbsup as "thumbsUp", 
                     thumbsdown as "thumbsDown", 
                     neutralface as "neutralFace", 
                     eggplant 
              FROM Messages 
-             WHERE sentBy = $1 AND sentMessage = $2 AND roomCode = $3`,
-            [sentBy, sentMessage, roomCode]
+             WHERE id = $1 AND roomCode = $2`,
+            [messageId, roomCode]
         );
 
         if (messageResult.rows.length === 0) {
             return res.status(404).json({ error: 'Message not found' });
         }
 
-        const messageId = messageResult.rows[0].id;
         const counts = messageResult.rows[0];
 
+        // Get user's reactions for this message
         const userReactions = await pool.query(
             `SELECT reaction_type FROM MessageReactions 
              WHERE message_id = $1 AND username = $2`,
