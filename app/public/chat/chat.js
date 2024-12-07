@@ -11,7 +11,9 @@ function appendMessage(messageUsername, message, messageId, isSelf = false) {
     item.className = "message-item";
     item.dataset.username = messageUsername;
     item.dataset.message = message;
-    item.dataset.messageid = messageId;
+    item.dataset.messageid = messageId ? messageId.toString() : '';
+
+    console.log('Message data:', { messageUsername, message, messageId, isSelf });
 
     let usernameSpan = document.createElement("span");
     usernameSpan.className = "message-username";
@@ -53,6 +55,14 @@ function appendMessage(messageUsername, message, messageId, isSelf = false) {
     editButton.className = "edit-button";
     editButton.dataset.roomId = roomId;
     editButton.textContent = "✏️";
+
+    let deleteSpan = document.createElement("span");
+    deleteSpan.className = "message-edit";
+
+    let deleteButton = document.createElement("button");
+    deleteButton.className = "edit-button";
+    deleteButton.dataset.roomId = roomId;
+    deleteButton.textContent = "❌";
 
     editButton.addEventListener("click", () => {
         editButton.style.display = "none";
@@ -122,8 +132,37 @@ function appendMessage(messageUsername, message, messageId, isSelf = false) {
         item.insertBefore(interactiveEditSpan, reactionsDiv);
     });
 
+    deleteButton.addEventListener("click", async () => {
+        try {
+            const messageId = item.dataset.messageid;
+            const response = await fetch("https://datcord.fly.dev/delete-message", {
+                method: "POST",
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    messageId: parseInt(messageId, 10),
+                    roomCode: roomId
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                item.remove();
+            } else {
+                console.error('Failed to delete message:', data.error);
+            }
+        } catch (error) {
+            console.error('Error deleting message:', error);
+        }
+    });
+
+
     if (messageUsername === username) {
         editSpan.appendChild(editButton);
+        editSpan.appendChild(deleteButton);
     }
     reactionsDiv.appendChild(editSpan);
 
@@ -198,35 +237,46 @@ input.addEventListener("keypress", (e) => {
 });
 
 document.addEventListener("DOMContentLoaded", async () => {
-    fetch(`https://datcord.fly.dev/get-messages?roomId=${roomId}`, {
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            "Content-Type": "application/json",
-        },
-        credentials: 'include',
-    }).then(response => {
-        if (response.ok && response.headers.get("Content-Type")?.includes("application/json")) {
-            return response.json();
-        } else {
-            return response.text();
+    try {
+        const response = await fetch(`https://datcord.fly.dev/get-messages?roomId=${roomId}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                "Content-Type": "application/json",
+            },
+            credentials: 'include',
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
-    }).then(body => {
-        for (let message of body.result) {
-            if (message["sentby"] === username) {
-                appendMessage(message["sentby"], message["sentmessage"], message["messageid"], true);
-            } else {
-                appendMessage(message["sentby"], message["sentmessage"], message["messageid"], false);
+
+        const data = await response.json();
+        if (!data.result || !Array.isArray(data.result)) {
+            console.error('Invalid response format:', data);
+            return;
+        }
+
+        for (let message of data.result) {
+            if (!message.messageid) {
+                console.error('Message missing ID:', message);
+                continue;
             }
+            
+            const isSelf = message.sentby === username;
+            appendMessage(
+                message.sentby,
+                message.sentmessage,
+                message.messageid,
+                isSelf
+            );
         }
-    }).catch(error => {
-        console.log(error);
-    });
+    } catch (error) {
+        console.error('Error loading messages:', error);
+    }
 });
 
-const socket = io('https://datcord.fly.dev', {
-    query: { roomId: roomId },
-    transports: ['websocket'],
-    withCredentials: true
+let socket = io('https://datcord.fly.dev', {
+    query: { roomId: roomId }
 });
 
 socket.on("connect", () => {
@@ -276,7 +326,7 @@ async function handleReaction(messageUsername, message, roomId, reactionType, me
             },
             credentials: 'include',
             body: JSON.stringify({
-                messageId: parseInt(messageId),
+                messageId: parseInt(messageId, 10),
                 roomCode: roomId,
                 reactionType: reactionType,
                 reactingUser: username
@@ -288,7 +338,7 @@ async function handleReaction(messageUsername, message, roomId, reactionType, me
             if (result.success) {
                 updateReactionDisplay(messageId, reactionType, result.newCount, result.hasReacted);
                 socket.emit('reaction', {
-                    messageId,
+                    messageId: parseInt(messageId, 10),
                     roomId,
                     reactionType,
                     newCount: result.newCount,
@@ -318,6 +368,7 @@ function updateReactionDisplay(messageId, reactionType, newCount, hasReacted) {
 
 async function loadReactionCounts(messageUsername, message, roomId, messageElement) {
     try {
+        const messageId = messageElement.dataset.messageid;
         const response = await fetch(`https://datcord.fly.dev/get-reaction-counts`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -326,8 +377,7 @@ async function loadReactionCounts(messageUsername, message, roomId, messageEleme
             credentials: 'include',
             method: 'POST',
             body: JSON.stringify({
-                sentBy: messageUsername,
-                sentMessage: message,
+                messageId: parseInt(messageId, 10),
                 roomCode: roomId,
                 currentUser: username
             })
@@ -342,9 +392,8 @@ async function loadReactionCounts(messageUsername, message, roomId, messageEleme
                 const countSpan = button.querySelector('.reaction-count');
                 countSpan.textContent = data[reactionType] || 0;
 
-                if (data.userReactions.includes(reactionType)) {
-                    button.classList.add('active');
-                }
+                // Update the active state based on user's reactions
+                button.classList.toggle('active', data.userReactions.includes(reactionType));
             });
         }
     } catch (error) {
@@ -383,9 +432,16 @@ function getEmojiForReactionType(type) {
 function getReactionTypeFromEmoji(emoji) {
     const typeMap = {
         '👍': 'thumbsUp',
-        '': 'thumbsDown',
+        '👎': 'thumbsDown',
         '😐': 'neutralFace',
         '🍆': 'eggplant'
     };
     return typeMap[emoji];
 }
+
+socket.on('messageDelete', (data) => {
+    const messageElement = document.querySelector(`.message-item[data-messageid="${data.messageId}"]`);
+    if (messageElement) {
+        messageElement.remove();
+    }
+});
