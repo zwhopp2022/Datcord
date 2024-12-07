@@ -275,7 +275,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 });
 
-let socket = io('https://datcord.fly.dev', {
+let socket = io('https://datcord.fly.dev:8080', {
     query: { roomId: roomId },
     transports: ['websocket'],
     secure: true,
