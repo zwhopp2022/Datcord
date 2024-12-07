@@ -292,11 +292,6 @@ let socket = io('https://datcord.fly.dev:8080', {
     }
 });
 
-// socket.on("connect", () => {
-//     console.log("Connected to server", socket.id);
-//     console.log("Connection query:", socket.io.opts.query);
-// });
-
 socket.on("connect_error", (error) => {
     console.error("Connection Error Details:", {
         type: error.type,
@@ -330,10 +325,10 @@ socket.on('messageUpdate', (data) => {
 
 socket.on("messageBroadcast", (data) => {
     const { username: messageUsername, message, messageId } = data;
-    // Check if message already exists and is from another user
     const existingMessage = document.querySelector(`[data-messageid="${messageId}"]`);
-    if (messageUsername !== username && !existingMessage) {
-        appendMessage(messageUsername, message, messageId, false);
+    // Remove the username check and only check if message exists
+    if (!existingMessage) {
+        appendMessage(messageUsername, message, messageId, messageUsername === username);
     }
 });
 
