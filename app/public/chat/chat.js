@@ -292,10 +292,10 @@ let socket = io('https://datcord.fly.dev:8080', {
     }
 });
 
-socket.on("connect", () => {
-    console.log("Connected to server", socket.id);
-    console.log("Connection query:", socket.io.opts.query);
-});
+// socket.on("connect", () => {
+//     console.log("Connected to server", socket.id);
+//     console.log("Connection query:", socket.io.opts.query);
+// });
 
 socket.on("connect_error", (error) => {
     console.error("Connection Error Details:", {

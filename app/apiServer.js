@@ -1646,13 +1646,13 @@ io.on("connection", (socket) => {
         console.log(`Socket ${socket.id} joined room ${roomId}`);
     }
 
-    socket.on("message", (data) => {
-        socket.to(data.roomId).emit("messageBroadcast", {
-            username: data.username,
-            message: data.message,
-            messageId: data.messageId
-        });
-    });
+    // socket.on("message", (data) => {
+    //     socket.to(data.roomId).emit("messageBroadcast", {
+    //         username: data.username,
+    //         message: data.message,
+    //         messageId: data.messageId
+    //     });
+    // });
 
     socket.on("reaction", (data) => {
         socket.to(data.roomId).emit("reactionUpdate", {
