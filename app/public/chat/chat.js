@@ -329,9 +329,10 @@ socket.on('messageUpdate', (data) => {
 });
 
 socket.on("messageBroadcast", (data) => {
-    const { messageUsername, message, messageId } = data;
-    // Only append messages from other users
-    if (messageUsername !== username) {
+    const { username: messageUsername, message, messageId } = data;
+    // Check if message already exists and is from another user
+    const existingMessage = document.querySelector(`[data-messageid="${messageId}"]`);
+    if (messageUsername !== username && !existingMessage) {
         appendMessage(messageUsername, message, messageId, false);
     }
 });
