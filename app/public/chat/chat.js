@@ -277,13 +277,19 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 let socket = io('https://datcord.fly.dev', {
     query: { roomId: roomId },
-    transports: ['websocket', 'polling'],
+    transports: ['websocket'],
     secure: true,
     rejectUnauthorized: false,
     path: '/socket.io/',
     reconnectionAttempts: 5,
     reconnectionDelay: 1000,
-    timeout: 20000
+    timeout: 20000,
+    auth: {
+        token: token
+    },
+    extraHeaders: {
+        'Authorization': `Bearer ${token}`
+    }
 });
 
 socket.on("connect", () => {
@@ -292,7 +298,24 @@ socket.on("connect", () => {
 });
 
 socket.on("connect_error", (error) => {
-    console.error("Connection Error:", error);
+    console.error("Connection Error Details:", {
+        type: error.type,
+        message: error.message,
+        description: error.description,
+        context: {
+            transport: socket.io.engine.transport.name,
+            readyState: socket.io.engine.readyState,
+            protocol: window.location.protocol
+        }
+    });
+});
+
+socket.io.on("reconnect_attempt", (attempt) => {
+    console.log("Reconnection attempt:", attempt);
+});
+
+socket.io.on("reconnect_failed", () => {
+    console.log("Reconnection failed after all attempts");
 });
 
 socket.on('messageUpdate', (data) => {
@@ -441,7 +464,7 @@ function getReactionTypeFromEmoji(emoji) {
         '👍': 'thumbsUp',
         '👎': 'thumbsDown',
         '😐': 'neutralFace',
-        '🍆': 'eggplant'
+        '���': 'eggplant'
     };
     return typeMap[emoji];
 }
