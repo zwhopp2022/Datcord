@@ -132,26 +132,31 @@ function appendMessage(messageUsername, message, messageId, isSelf = false) {
         item.insertBefore(interactiveEditSpan, reactionsDiv);
     });
 
-    deleteButton.addEventListener("click", () => {
-        item.remove();
-        fetch("http://localhost:3000/delete-message", {
-            method: "POST",
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                "Content-Type": "application/json"
-            },
-            credentials: 'include',
-            body: JSON.stringify({
-                sentMessage: message,
-                sentBy: username,
-                roomCode: roomId
-            })
-        }).then(response => response.json())
-        .then(data => {
-            // nothing to see here :D
-        }).catch(error => {
-            console.log(error.message);
-        });
+    deleteButton.addEventListener("click", async () => {
+        try {
+            const messageId = item.dataset.messageid;
+            const response = await fetch("http://localhost:3000/delete-message", {
+                method: "POST",
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    messageId: parseInt(messageId, 10),
+                    roomCode: roomId
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                item.remove();
+            } else {
+                console.error('Failed to delete message:', data.error);
+            }
+        } catch (error) {
+            console.error('Error deleting message:', error);
+        }
     });
 
 
@@ -433,3 +438,11 @@ function getReactionTypeFromEmoji(emoji) {
     };
     return typeMap[emoji];
 }
+
+// Add socket listener for message deletion (add this near other socket listeners)
+socket.on('messageDelete', (data) => {
+    const messageElement = document.querySelector(`.message-item[data-messageid="${data.messageId}"]`);
+    if (messageElement) {
+        messageElement.remove();
+    }
+});

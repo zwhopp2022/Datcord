@@ -1142,24 +1142,37 @@ app.post("/save-message", (req, res) => {
 });
 
 app.post("/delete-message", async (req, res) => {
-    let body = req.body;
+    let { messageId, roomCode } = req.body;
 
-    if (validateMessageText(body)) {
-        const { sentMessage, sentBy, roomCode } = body;
+    try {
+        const result = await pool.query(
+            "DELETE FROM Messages WHERE id = $1 AND roomCode = $2 RETURNING id",
+            [messageId, roomCode]
+        );
 
-        pool.query(
-            "DELETE FROM Messages WHERE sentMessage = $1 AND sentBy = $2 AND roomCode = $3 RETURNING id",
-            [sentMessage, sentBy, roomCode]
-        ).then(result => {
-            let messageId = result.rows[0].id;
-            res.status(200).json({ "result": true, "messageId": messageId });
-        }).catch(error => {
-            console.error("Error deleting message:", error.message);
-            res.status(500).json({ "message": "Internal server error" });
+        if (result.rows.length > 0) {
+            // Emit socket event to notify other users
+            io.to(roomCode).emit('messageDelete', {
+                messageId: messageId,
+                roomCode: roomCode
+            });
+            
+            res.status(200).json({ 
+                success: true, 
+                messageId: result.rows[0].id 
+            });
+        } else {
+            res.status(404).json({ 
+                success: false, 
+                error: "Message not found" 
+            });
+        }
+    } catch (error) {
+        console.error("Error deleting message:", error.message);
+        res.status(500).json({ 
+            success: false, 
+            error: "Internal server error" 
         });
-
-    } else {
-        return res.status(400).json({ "message": "Missing or misformatted message information" });
     }
 });
 
