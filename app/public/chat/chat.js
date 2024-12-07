@@ -276,7 +276,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 let socket = io('https://datcord.fly.dev', {
-    query: { roomId: roomId }
+    query: { roomId: roomId },
+    transports: ['websocket', 'polling'],
+    secure: true,
+    rejectUnauthorized: false,
+    path: '/socket.io/'
 });
 
 socket.on("connect", () => {
