@@ -39,8 +39,9 @@ try {
 let server = http.createServer(app);
 let io = new Server(server, {
     cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
+        origin: "https://datcord.fly.dev",
+        methods: ["GET", "POST"],
+        credentials: true
     }
 });
 let rooms = {};
