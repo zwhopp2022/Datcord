@@ -36,15 +36,18 @@ try {
 let server = http.createServer(app);
 let io = new Server(server, {
     cors: {
-        origin: "*",
+        origin: "https://datcord.fly.dev",
         methods: ["GET", "POST"],
-        allowedHeaders: ["*"],
+        allowedHeaders: ["Content-Type", "Authorization"],
         credentials: true
     },
     path: '/socket.io/',
     transports: ['websocket', 'polling'],
     allowEIO3: true,
-    pingTimeout: 60000
+    pingTimeout: 60000,
+    pingInterval: 25000,
+    upgradeTimeout: 10000,
+    maxHttpBufferSize: 1e8
 });
 let rooms = {};
 

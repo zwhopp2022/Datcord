@@ -28,17 +28,17 @@ primary_region = 'iad'
 
   [[services.ports]]
     port = 80
-    handlers = ["http"]
+    handlers = ["http", "proxy"]
     force_https = true
 
   [[services.ports]]
     port = 443
-    handlers = ["tls", "http"]
+    handlers = ["tls", "http", "proxy"]
     
   [services.concurrency]
     type = "connections"
-    hard_limit = 250
-    soft_limit = 200
+    hard_limit = 1000
+    soft_limit = 800
 
   [[services.tcp_checks]]
     interval = "15s"

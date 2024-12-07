@@ -275,9 +275,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 });
 
-let socket = io('https://datcord.fly.dev:8080', {
+let socket = io('https://datcord.fly.dev', {
     query: { roomId: roomId },
-    transports: ['websocket'],
+    transports: ['websocket', 'polling'],
     secure: true,
     rejectUnauthorized: false,
     path: '/socket.io/',
@@ -286,9 +286,6 @@ let socket = io('https://datcord.fly.dev:8080', {
     timeout: 20000,
     auth: {
         token: token
-    },
-    extraHeaders: {
-        'Authorization': `Bearer ${token}`
     }
 });
 
@@ -460,7 +457,7 @@ function getReactionTypeFromEmoji(emoji) {
         '👍': 'thumbsUp',
         '👎': 'thumbsDown',
         '😐': 'neutralFace',
-        '���': 'eggplant'
+        '🍆': 'eggplant'
     };
     return typeMap[emoji];
 }
