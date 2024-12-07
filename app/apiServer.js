@@ -14,11 +14,21 @@ const app = express();
 
 
 const port = 3000;
-const hostname = "localhost";
+const hostname = "https://datcord.fly.dev/";
+if (process.env.NODE_ENV == "production") {
+    console.log("ENV IS PRODUCTION!!!!");
+	host = "0.0.0.0";
+	databaseConfig = { connectionString: process.env.DATABASE_URL };
+} else {
+	host = "localhost";
+}
 
-const env = require("../appsettings.local.json");
+//const env = require("../appsettings.json");
 const Pool = pg.Pool;
-const pool = new Pool(env);
+const pool = new Pool(databaseConfig);
+pool.connect().then(function () {
+    console.log(`Connected to database`);
+});
 let server = http.createServer(app);
 let io = new Server(server, {
     cors: {
@@ -58,6 +68,65 @@ let cookieOptions = {
     secure: true, // prevents packet sniffing by using https
     sameSite: "strict", // only include this cookie on requests to the same domain
 };
+
+app.use((req, res, next) => {
+    const { token } = req.cookies;
+    const normalizedPath = req.path.replace(/\/$/, '');
+    const publicRoutes = ['/login', '/register', '/set-cookie'];
+  
+    if (publicRoutes.includes(normalizedPath)) {
+      return next();
+    }
+  
+    if (!token) {
+      console.log("No token found, redirecting to /login");
+      return res.redirect('/login');
+    }
+  
+    next();
+  });
+  
+  // all main route handlers
+  
+  app.get('/', (req, res) => {
+    res.redirect('/home');
+  });
+  
+  app.get('/profile', (req, res) => {
+    res.sendFile(path.resolve(__dirname, 'public', 'profile', 'profile.html')); 
+  });
+  
+  app.get('/friends', (req, res) => {
+    res.sendFile(path.resolve(__dirname, 'public', 'friends', 'friends.html')); 
+  });
+  
+  app.get('/home', (req, res) => {
+    res.sendFile(path.resolve(__dirname, 'public', 'home', 'home.html')); 
+  });
+  
+  app.get('/login', (req, res) => {
+    res.sendFile(path.resolve(__dirname, 'public', 'login', 'login.html')); 
+  });
+  
+  app.get('/register', (req, res) => {
+    res.sendFile(path.resolve(__dirname, 'public', 'register', 'register.html')); 
+  });
+  
+  app.get("/home/chat", (req, res) => {
+    let roomId = req.query.roomId;
+    console.log(roomId);
+    if (!searchRoom(roomId)) {
+        return res.status(404).send();
+    }
+    console.log("Sending room", roomId);
+    res.sendFile(path.resolve(__dirname, 'public', 'chat', 'chat.html'));
+  });
+  
+  app.get("/permissions", (req, res) => {
+    let serverCode = req.query.serverCode;
+    console.log("Loading permissions for", serverCode);
+    res.sendFile(path.resolve(__dirname, 'public', 'permissions', 'permissions.html'));
+  });
 
 function makeToken() {
     return crypto.randomBytes(32).toString("hex");
@@ -286,9 +355,6 @@ async function updateFriendsTableUsername(oldUsername, newUsername) {
 }
 
 // startup connections and middleware
-pool.connect().then(function () {
-    console.log(`Connected to database ${env.database}`);
-});
 
 // API ENDPOINTS FOR USER CREATION AND MODIFICATION
 
@@ -1176,7 +1242,6 @@ app.post("/delete-message", async (req, res) => {
     }
 });
 
-
 app.post("/create-server", async (req, res) => {
     let body = req.body;
 
@@ -1219,11 +1284,7 @@ app.get("/get-messages", async (req, res) => {
     }
 
     pool.query(
-        `SELECT id as messageid, sentMessage, sentBy, roomCode, 
-                thumbsup, thumbsdown, neutralface, eggplant 
-         FROM Messages 
-         WHERE roomCode = $1 
-         ORDER BY id ASC`,
+        "SELECT * FROM Messages WHERE roomCode = $1 ORDER BY id ASC",
         [roomId]
     ).then(result => {
         res.status(200).json({ "result": result.rows });
@@ -1490,26 +1551,25 @@ app.post("/react-to-message", async (req, res) => {
 
 app.post("/get-reaction-counts", async (req, res) => {
     try {
-        const { messageId, roomCode, currentUser } = req.body;
+        const { sentBy, sentMessage, roomCode, currentUser } = req.body;
 
-        // Get message reaction counts
         const messageResult = await pool.query(
             `SELECT id, thumbsup as "thumbsUp", 
                     thumbsdown as "thumbsDown", 
                     neutralface as "neutralFace", 
                     eggplant 
              FROM Messages 
-             WHERE id = $1 AND roomCode = $2`,
-            [messageId, roomCode]
+             WHERE sentBy = $1 AND sentMessage = $2 AND roomCode = $3`,
+            [sentBy, sentMessage, roomCode]
         );
 
         if (messageResult.rows.length === 0) {
             return res.status(404).json({ error: 'Message not found' });
         }
 
+        const messageId = messageResult.rows[0].id;
         const counts = messageResult.rows[0];
 
-        // Get user's reactions for this message
         const userReactions = await pool.query(
             `SELECT reaction_type FROM MessageReactions 
              WHERE message_id = $1 AND username = $2`,
@@ -1540,6 +1600,27 @@ app.post("/get-reaction-counts", async (req, res) => {
 
 io.on("connection", (socket) => {
     const roomId = socket.handshake.query.roomId;
+
+    socket.on('joinRoom', ({ roomId }) => {
+        if (roomId) {
+            socket.join(roomId);
+            console.log(`Socket ${socket.id} joined room ${roomId}`);
+        }
+    });
+
+    socket.on("message", (data) => {
+        if (!data.roomId) {
+            console.error('No roomId provided for message');
+            return;
+        }
+        socket.to(data.roomId).emit("messageBroadcast", {
+            username: data.username,
+            message: data.message,
+            messageId: data.messageId
+        });
+    });
+
+
     if (roomId) {
         socket.join(roomId);
         console.log(`Socket ${socket.id} joined room ${roomId}`);
@@ -1573,8 +1654,8 @@ io.on("connection", (socket) => {
 
 
 //  server startup
-server.listen(port, hostname, () => {
-    console.log(`Listening at: http://${hostname}:${port}`);
+server.listen(port, host, () => {
+    console.log(`Listening at: http://${host}:${port}`);
 });
 
 function validateCreateChannelRequest(body) {
