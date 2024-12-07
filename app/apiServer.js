@@ -1640,6 +1640,7 @@ io.on("connection", (socket) => {
         });
     });
 
+
     if (roomId) {
         socket.join(roomId);
         console.log(`Socket ${socket.id} joined room ${roomId}`);
