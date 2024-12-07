@@ -280,7 +280,10 @@ let socket = io('https://datcord.fly.dev', {
     transports: ['websocket', 'polling'],
     secure: true,
     rejectUnauthorized: false,
-    path: '/socket.io/'
+    path: '/socket.io/',
+    reconnectionAttempts: 5,
+    reconnectionDelay: 1000,
+    timeout: 20000
 });
 
 socket.on("connect", () => {
