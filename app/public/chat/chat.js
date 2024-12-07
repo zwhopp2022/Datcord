@@ -216,7 +216,7 @@ button.addEventListener("click", () => {
         .then(data => {
             if (data.result) {
                 input.value = "";
-                appendMessage(username, message, data.messageId, true);
+                // appendMessage(username, message, data.messageId, true);
                 socket.emit("message", {
                     username: username,
                     message: message,
