@@ -1621,6 +1621,11 @@ app.post("/get-reaction-counts", async (req, res) => {
 io.on("connection", (socket) => {
     const roomId = socket.handshake.query.roomId;
 
+    if (roomId) {
+        socket.join(roomId);
+        console.log(`Socket ${socket.id} joined room ${roomId}`);
+    }
+
     socket.on('joinRoom', ({ roomId }) => {
         if (roomId) {
             socket.join(roomId);
@@ -1639,12 +1644,6 @@ io.on("connection", (socket) => {
             messageId: data.messageId
         });
     });
-
-
-    if (roomId) {
-        socket.join(roomId);
-        console.log(`Socket ${socket.id} joined room ${roomId}`);
-    }
 
     socket.on("reaction", (data) => {
         socket.to(data.roomId).emit("reactionUpdate", {
