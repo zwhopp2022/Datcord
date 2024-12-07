@@ -17,7 +17,7 @@ let host;
 const port = 3000;
 const hostname = "https://datcord.fly.dev/";
 if (process.env.NODE_ENV == "production") {
-    host = "0.0.0.0";
+    host = "127.0.0.1";
     databaseConfig = { connectionString: `postgres://postgres:${process.env.DATABASE_URL}@datcord-db.flycast:5432/datcord` };
 } else {
     host = "localhost";
