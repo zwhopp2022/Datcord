@@ -289,7 +289,6 @@ let socket = io('https://datcord.fly.dev', {
     }
 });
 
-
 socket.on("connect_error", (error) => {
     console.error("Connection Error Details:", {
         type: error.type,
