@@ -14,10 +14,10 @@ const app = express();
 let pool;
 let databaseConfig;
 let host;
-const port = 3000;
+const port = 8080;
 const hostname = "https://datcord.fly.dev/";
 if (process.env.NODE_ENV == "production") {
-    host = "127.0.0.1";
+    host = "0.0.0.0";
     databaseConfig = { connectionString: `postgres://postgres:${process.env.DATABASE_URL}@datcord-db.flycast:5432/datcord` };
 } else {
     host = "localhost";
