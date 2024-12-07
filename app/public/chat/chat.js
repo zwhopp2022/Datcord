@@ -329,8 +329,11 @@ socket.on('messageUpdate', (data) => {
 });
 
 socket.on("messageBroadcast", (data) => {
-    const { username, message, messageId } = data;
-    appendMessage(username, message, messageId, false);
+    const { username: messageUsername, message, messageId } = data;
+    // Only append messages from other users
+    if (messageUsername !== username) {
+        appendMessage(messageUsername, message, messageId, false);
+    }
 });
 
 socket.on("connect", () => {
