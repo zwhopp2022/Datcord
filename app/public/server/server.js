@@ -36,7 +36,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             permissionsButton.textContent = "Permissions";
 
             permissionsButton.addEventListener("click", () => {
-                window.location.href = `http://localhost:3001/permissions?serverCode=${serverCode}&serverName=${serverName}`;
+                window.location.href = `https://datcord.fly.dev/permissions?serverCode=${serverCode}&serverName=${serverName}`;
             });
 
             serverBanner.appendChild(permissionsButton);
