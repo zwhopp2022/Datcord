@@ -12,7 +12,7 @@
     "socket.io-client": "^4.8.1"
   },
   "scripts": {
-    "start": "cd app && concurrently \"node mainServer.js\" \"node apiServer.js\"",
+    "start": "node app/apiSever.js",
     "setup": "psql -U postgres -f sql/setup.sql"
   },
   "devDependencies": {

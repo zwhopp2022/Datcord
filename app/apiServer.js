@@ -1,4 +1,4 @@
-const pg = require("pg");
+const { Pool } = require("pg");
 const express = require("express");
 const bcrypt = require('bcrypt');
 const cookieParser = require("cookie-parser");
@@ -13,12 +13,27 @@ const path = require("path");
 const app = express();
 
 
-const port = 3000;
-const hostname = "localhost";
+let port = 3000;
+let pool;
 
-const env = require("../appsettings.local.json");
-const Pool = pg.Pool;
-const pool = new Pool(env);
+let host;
+if (process.env.NODE_ENV == "production") {
+    host = "0.0.0.0";
+    databaseConfig = { connectionString: `postgres://postgres:${process.env.DATABASE_URL}@datcord-db.flycast:5432/datcord` };
+} else {
+    host = "localhost";
+}
+
+try {
+    pool = new Pool(databaseConfig);
+    pool.connect().then(function () {
+        console.log("CONNECTED TO POST GRES DB SUCCESSFULLY!");
+    });
+} catch (error) {
+    console.log(`Error received when connecting to database: ${error}`);
+}
+
+// const env = require("../appsettings.local.json");
 let server = http.createServer(app);
 let io = new Server(server, {
     cors: {
@@ -38,8 +53,9 @@ app.use(cors({
 }));
 
 let authorize = async (req, res, next) => {
-    let noVerificationPaths = ["/", "/add-user", "/login", "/register", "/add-friend", "/create-server"];
-    if (noVerificationPaths.includes(req.path)) {
+    let normalizedPath = req.path.replace(/\/$/, '');
+    let noVerificationPaths = ["/add-user", "/login", "/register", "/add-friend", "/create-server"];
+    if (noVerificationPaths.includes(normalizedPath)) {
         return next();
     }
     let { token, username } = req.cookies;
@@ -47,7 +63,7 @@ let authorize = async (req, res, next) => {
     let verified = await bcrypt.compare(token, storedToken);
     if (token === undefined || !(verified)) {
         console.log("not allowed");
-        return res.status(403).send("Not allowed");
+        return res.redirect('/login');
     }
     next();
 };
@@ -61,44 +77,44 @@ let cookieOptions = {
 
 
 app.get('/', (req, res) => {
-    res.redirect('/home');
-  });
-  
+res.redirect('/home');
+});
+
 app.get('/profile', (req, res) => {
     res.sendFile(path.resolve(__dirname, 'public', 'profile', 'profile.html')); 
-  });
-  
-  app.get('/friends', (req, res) => {
+});
+
+app.get('/friends', (req, res) => {
     res.sendFile(path.resolve(__dirname, 'public', 'friends', 'friends.html')); 
-  });
-  
-  app.get('/home', (req, res) => {
+});
+
+app.get('/home', (req, res) => {
     res.sendFile(path.resolve(__dirname, 'public', 'home', 'home.html')); 
-  });
-  
-  app.get('/login', (req, res) => {
+});
+
+app.get('/login', (req, res) => {
     res.sendFile(path.resolve(__dirname, 'public', 'login', 'login.html')); 
-  });
-  
-  app.get('/register', (req, res) => {
+});
+
+app.get('/register', (req, res) => {
     res.sendFile(path.resolve(__dirname, 'public', 'register', 'register.html')); 
-  });
-  
-  app.get("/home/chat", (req, res) => {
-    let roomId = req.query.roomId;
-    console.log(roomId);
-    if (!searchRoom(roomId)) {
-        return res.status(404).send();
-    }
-    console.log("Sending room", roomId);
-    res.sendFile(path.resolve(__dirname, 'public', 'chat', 'chat.html'));
-  });
-  
-  app.get("/permissions", (req, res) => {
-    let serverCode = req.query.serverCode;
-    console.log("Loading permissions for", serverCode);
-    res.sendFile(path.resolve(__dirname, 'public', 'permissions', 'permissions.html'));
-  });
+});
+
+app.get("/home/chat", (req, res) => {
+let roomId = req.query.roomId;
+console.log(roomId);
+if (!searchRoom(roomId)) {
+return res.status(404).send();
+}
+console.log("Sending room", roomId);
+res.sendFile(path.resolve(__dirname, 'public', 'chat', 'chat.html'));
+});
+
+app.get("/permissions", (req, res) => {
+let serverCode = req.query.serverCode;
+console.log("Loading permissions for", serverCode);
+res.sendFile(path.resolve(__dirname, 'public', 'permissions', 'permissions.html'));
+});
 
 function makeToken() {
     return crypto.randomBytes(32).toString("hex");
