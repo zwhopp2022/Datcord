@@ -1,4 +1,4 @@
-const pg = require("pg");
+const { Pool } = require("pg");
 const express = require("express");
 const bcrypt = require('bcrypt');
 const cookieParser = require("cookie-parser");
@@ -13,12 +13,27 @@ const path = require("path");
 const app = express();
 
 
-const port = process.env.PORT || 3000;
-const hostname = "https://datcord.fly.dev/";
+let port =  8080;
+let pool;
 
-const env = require("../appsettings.local.json");
-const Pool = pg.Pool;
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+let hostname;
+if (process.env.NODE_ENV == "production") {
+    hostname = "0.0.0.0";
+    databaseConfig = { connectionString: `postgres://postgres:${process.env.DATABASE_URL}@datcord-db.flycast:5432/datcord` };
+} else {
+    hostname = "localhost";
+}
+
+try {
+    pool = new Pool(databaseConfig);
+    pool.connect().then(function () {
+        console.log("CONNECTED TO POST GRES DB SUCCESSFULLY!");
+    });
+} catch (error) {
+    console.log(`Error received when connecting to database: ${error}`);
+}
+
+// const env = require("../appsettings.local.json");
 let server = http.createServer(app);
 let io = new Server(server, {
     cors: {
@@ -38,16 +53,20 @@ app.use(cors({
 }));
 
 let authorize = async (req, res, next) => {
-    let noVerificationPaths = ["/", "/add-user", "/login", "/register", "/add-friend", "/create-server"];
-    if (noVerificationPaths.includes(req.path)) {
+    let normalizedPath = req.path.replace(/\/$/, '');
+    let noVerificationPaths = ["/add-user", "/login", "/register", "/add-friend", "/create-server"];
+    if (noVerificationPaths.includes(normalizedPath)) {
         return next();
     }
     let { token, username } = req.cookies;
+    if (!token || !username) {
+        return res.redirect('/login');
+    }
     let storedToken = await getToken(username);
     let verified = await bcrypt.compare(token, storedToken);
     if (token === undefined || !(verified)) {
         console.log("not allowed");
-        return res.status(403).send("Not allowed");
+        return res.redirect('/login');
     }
     next();
 };
@@ -59,64 +78,46 @@ let cookieOptions = {
     sameSite: "strict", // only include this cookie on requests to the same domain
 };
 
-app.use((req, res, next) => {
-    const { token } = req.cookies;
-    const normalizedPath = req.path.replace(/\/$/, '');
-    const publicRoutes = ['/login', '/register', '/set-cookie'];
-  
-    if (publicRoutes.includes(normalizedPath)) {
-      return next();
-    }
-  
-    if (!token) {
-      console.log("No token found, redirecting to /login");
-      return res.redirect('/login');
-    }
-  
-    next();
-  });
-  
-  // all main route handlers
-  
-  app.get('/', (req, res) => {
-    res.redirect('/home');
-  });
-  
-  app.get('/profile', (req, res) => {
+
+app.get('/', (req, res) => {
+res.redirect('/home');
+});
+
+app.get('/profile', (req, res) => {
     res.sendFile(path.resolve(__dirname, 'public', 'profile', 'profile.html')); 
-  });
-  
-  app.get('/friends', (req, res) => {
+});
+
+app.get('/friends', (req, res) => {
     res.sendFile(path.resolve(__dirname, 'public', 'friends', 'friends.html')); 
-  });
-  
-  app.get('/home', (req, res) => {
+});
+
+app.get('/home', (req, res) => {
     res.sendFile(path.resolve(__dirname, 'public', 'home', 'home.html')); 
-  });
-  
-  app.get('/login', (req, res) => {
+});
+
+app.get('/login', (req, res) => {
     res.sendFile(path.resolve(__dirname, 'public', 'login', 'login.html')); 
-  });
-  
-  app.get('/register', (req, res) => {
+});
+
+app.get('/register', (req, res) => {
     res.sendFile(path.resolve(__dirname, 'public', 'register', 'register.html')); 
-  });
-  
-  app.get("/home/chat", (req, res) => {
-    let roomId = req.query.roomId;
-    console.log(roomId);
-    if (!searchRoom(roomId)) {
-        return res.status(404).send();
-    }
-    console.log("Sending room", roomId);
-    res.sendFile(path.resolve(__dirname, 'public', 'chat', 'chat.html'));
-  });
-  
-  app.get("/permissions", (req, res) => {
-    let serverCode = req.query.serverCode;
-    console.log("Loading permissions for", serverCode);
-    res.sendFile(path.resolve(__dirname, 'public', 'permissions', 'permissions.html'));
-  });
+});
+
+app.get("/home/chat", (req, res) => {
+let roomId = req.query.roomId;
+console.log(roomId);
+if (!searchRoom(roomId)) {
+return res.status(404).send();
+}
+console.log("Sending room", roomId);
+res.sendFile(path.resolve(__dirname, 'public', 'chat', 'chat.html'));
+});
+
+app.get("/permissions", (req, res) => {
+let serverCode = req.query.serverCode;
+console.log("Loading permissions for", serverCode);
+res.sendFile(path.resolve(__dirname, 'public', 'permissions', 'permissions.html'));
+});
 
 function makeToken() {
     return crypto.randomBytes(32).toString("hex");
@@ -344,10 +345,6 @@ async function updateFriendsTableUsername(oldUsername, newUsername) {
     }
 }
 
-// startup connections and middleware
-pool.connect().then(function () {
-    console.log(`Connected to database`);
-});
 
 // API ENDPOINTS FOR USER CREATION AND MODIFICATION
 
@@ -1200,6 +1197,41 @@ app.post("/save-message", (req, res) => {
     }
 });
 
+app.post("/delete-message", async (req, res) => {
+    let { messageId, roomCode } = req.body;
+
+    try {
+        const result = await pool.query(
+            "DELETE FROM Messages WHERE id = $1 AND roomCode = $2 RETURNING id",
+            [messageId, roomCode]
+        );
+
+        if (result.rows.length > 0) {
+            // Emit socket event to notify other users
+            io.to(roomCode).emit('messageDelete', {
+                messageId: messageId,
+                roomCode: roomCode
+            });
+            
+            res.status(200).json({ 
+                success: true, 
+                messageId: result.rows[0].id 
+            });
+        } else {
+            res.status(404).json({ 
+                success: false, 
+                error: "Message not found" 
+            });
+        }
+    } catch (error) {
+        console.error("Error deleting message:", error.message);
+        res.status(500).json({ 
+            success: false, 
+            error: "Internal server error" 
+        });
+    }
+});
+
 
 app.post("/create-server", async (req, res) => {
     let body = req.body;
@@ -1243,7 +1275,11 @@ app.get("/get-messages", async (req, res) => {
     }
 
     pool.query(
-        "SELECT * FROM Messages WHERE roomCode = $1 ORDER BY id ASC",
+        `SELECT id as messageid, sentMessage, sentBy, roomCode, 
+                thumbsup, thumbsdown, neutralface, eggplant 
+         FROM Messages 
+         WHERE roomCode = $1 
+         ORDER BY id ASC`,
         [roomId]
     ).then(result => {
         res.status(200).json({ "result": result.rows });
@@ -1510,25 +1546,26 @@ app.post("/react-to-message", async (req, res) => {
 
 app.post("/get-reaction-counts", async (req, res) => {
     try {
-        const { sentBy, sentMessage, roomCode, currentUser } = req.body;
+        const { messageId, roomCode, currentUser } = req.body;
 
+        // Get message reaction counts
         const messageResult = await pool.query(
             `SELECT id, thumbsup as "thumbsUp", 
                     thumbsdown as "thumbsDown", 
                     neutralface as "neutralFace", 
                     eggplant 
              FROM Messages 
-             WHERE sentBy = $1 AND sentMessage = $2 AND roomCode = $3`,
-            [sentBy, sentMessage, roomCode]
+             WHERE id = $1 AND roomCode = $2`,
+            [messageId, roomCode]
         );
 
         if (messageResult.rows.length === 0) {
             return res.status(404).json({ error: 'Message not found' });
         }
 
-        const messageId = messageResult.rows[0].id;
         const counts = messageResult.rows[0];
 
+        // Get user's reactions for this message
         const userReactions = await pool.query(
             `SELECT reaction_type FROM MessageReactions 
              WHERE message_id = $1 AND username = $2`,
