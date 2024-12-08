@@ -59,6 +59,47 @@ let cookieOptions = {
     sameSite: "strict", // only include this cookie on requests to the same domain
 };
 
+
+app.get('/', (req, res) => {
+    res.redirect('/home');
+  });
+  
+app.get('/profile', (req, res) => {
+    res.sendFile(path.resolve(__dirname, 'public', 'profile', 'profile.html')); 
+  });
+  
+  app.get('/friends', (req, res) => {
+    res.sendFile(path.resolve(__dirname, 'public', 'friends', 'friends.html')); 
+  });
+  
+  app.get('/home', (req, res) => {
+    res.sendFile(path.resolve(__dirname, 'public', 'home', 'home.html')); 
+  });
+  
+  app.get('/login', (req, res) => {
+    res.sendFile(path.resolve(__dirname, 'public', 'login', 'login.html')); 
+  });
+  
+  app.get('/register', (req, res) => {
+    res.sendFile(path.resolve(__dirname, 'public', 'register', 'register.html')); 
+  });
+  
+  app.get("/home/chat", (req, res) => {
+    let roomId = req.query.roomId;
+    console.log(roomId);
+    if (!searchRoom(roomId)) {
+        return res.status(404).send();
+    }
+    console.log("Sending room", roomId);
+    res.sendFile(path.resolve(__dirname, 'public', 'chat', 'chat.html'));
+  });
+  
+  app.get("/permissions", (req, res) => {
+    let serverCode = req.query.serverCode;
+    console.log("Loading permissions for", serverCode);
+    res.sendFile(path.resolve(__dirname, 'public', 'permissions', 'permissions.html'));
+  });
+
 function makeToken() {
     return crypto.randomBytes(32).toString("hex");
 }
