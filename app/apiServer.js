@@ -16,12 +16,12 @@ const app = express();
 let port = 3000;
 let pool;
 
-let host;
+let hostname;
 if (process.env.NODE_ENV == "production") {
-    host = "0.0.0.0";
+    hostname = "0.0.0.0";
     databaseConfig = { connectionString: `postgres://postgres:${process.env.DATABASE_URL}@datcord-db.flycast:5432/datcord` };
 } else {
-    host = "localhost";
+    hostname = "localhost";
 }
 
 try {
