@@ -342,10 +342,6 @@ async function updateFriendsTableUsername(oldUsername, newUsername) {
     }
 }
 
-// startup connections and middleware
-pool.connect().then(function () {
-    console.log(`Connected to database ${env.database}`);
-});
 
 // API ENDPOINTS FOR USER CREATION AND MODIFICATION
 
