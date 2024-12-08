@@ -14,7 +14,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderServerBanner();
     
     // Get user's permission level and setup UI accordingly
-    fetch(`http://localhost:3000/get-permission?username=${username}&serverCode=${serverCode}`, {
+    fetch(`https://datcord.fly.dev/get-permission?username=${username}&serverCode=${serverCode}`, {
         headers: {
             'Authorization': `Bearer ${token}`,
             "Content-Type": "application/json"
@@ -134,7 +134,7 @@ function promptNewChannel() {
 }
 
 function createNewChannel(channelName, permissionLevel) {
-    fetch("http://localhost:3000/create-channel", {
+    fetch("https://datcord.fly.dev/create-channel", {
         method: "POST",
         headers: {
             'Authorization': `Bearer ${token}`,
@@ -165,7 +165,7 @@ function loadChannels() {
         channelsContainer.removeChild(channelsContainer.firstChild);
     }
 
-    fetch(`http://localhost:3000/get-channels?serverCode=${serverCode}`, {
+    fetch(`https://datcord.fly.dev/get-channels?serverCode=${serverCode}`, {
         headers: {
             'Authorization': `Bearer ${token}`,
             "Content-Type": "application/json"
@@ -211,7 +211,7 @@ function loadChannels() {
 
 function deleteChannel(roomId) {
     if (confirm("Are you sure you want to delete this channel?")) {
-        fetch("http://localhost:3000/delete-channel", {
+        fetch("https://datcord.fly.dev/delete-channel", {
             method: "DELETE",
             headers: {
                 'Authorization': `Bearer ${token}`,

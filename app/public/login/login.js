@@ -15,7 +15,7 @@ form.addEventListener("submit", (event) => {
 
     event.preventDefault();
     messageContainer.textContent = "";
-    fetch('http://localhost:3000/login', {
+    fetch('https://datcord.fly.dev/login', {
         method: "POST",
         headers: {
             "Content-Type": "application/json"

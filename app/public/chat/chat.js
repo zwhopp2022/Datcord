@@ -92,7 +92,7 @@ function appendMessage(messageUsername, message, messageId, isSelf = false) {
                 messageSpan.style.display = "inline";
                 editButton.style.display = "inline";
 
-                fetch(`http://localhost:3000/edit-message`, {
+                fetch(`https://datcord.fly.dev/edit-message`, {
                     method: 'PUT',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -135,7 +135,7 @@ function appendMessage(messageUsername, message, messageId, isSelf = false) {
     deleteButton.addEventListener("click", async () => {
         try {
             const messageId = item.dataset.messageid;
-            const response = await fetch("http://localhost:3000/delete-message", {
+            const response = await fetch("https://datcord.fly.dev/delete-message", {
                 method: "POST",
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -200,7 +200,7 @@ function getCookie(name) {
 button.addEventListener("click", () => {
     let message = input.value.trim();
     if (message) {
-        fetch("http://localhost:3000/save-message", {
+        fetch("https://datcord.fly.dev/save-message", {
             method: "POST",
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -238,7 +238,7 @@ input.addEventListener("keypress", (e) => {
 
 document.addEventListener("DOMContentLoaded", async () => {
     try {
-        const response = await fetch(`http://localhost:3000/get-messages?roomId=${roomId}`, {
+        const response = await fetch(`https://datcord.fly.dev/get-messages?roomId=${roomId}`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 "Content-Type": "application/json",
@@ -275,7 +275,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 });
 
-let socket = io('http://localhost:3000', {
+let socket = io('https://datcord.fly.dev', {
     query: { roomId: roomId }
 });
 
@@ -318,7 +318,7 @@ async function handleReaction(messageUsername, message, roomId, reactionType, me
             return;
         }
 
-        const response = await fetch(`http://localhost:3000/react-to-message`, {
+        const response = await fetch(`https://datcord.fly.dev/react-to-message`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -369,7 +369,7 @@ function updateReactionDisplay(messageId, reactionType, newCount, hasReacted) {
 async function loadReactionCounts(messageUsername, message, roomId, messageElement) {
     try {
         const messageId = messageElement.dataset.messageid;
-        const response = await fetch(`http://localhost:3000/get-reaction-counts`, {
+        const response = await fetch(`https://datcord.fly.dev/get-reaction-counts`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'

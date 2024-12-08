@@ -28,7 +28,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     searchServerCodeField.textContent = `SERVER CODE: ${serverCode}`;
     searchPermissionField.textContent = "Current Permission Level: ";
 
-    fetch(`http://localhost:3000/get-permission?username=${username}&serverCode=${serverCode}`, {
+    fetch(`https://datcord.fly.dev/get-permission?username=${username}&serverCode=${serverCode}`, {
         headers: {
             'Authorization': `Bearer ${token}`,
             "Content-Type": "application/json"
@@ -50,7 +50,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 function goBack() {
-    window.location.href = `http://localhost:3000/home/server?serverCode=${serverCode}&serverName=${serverName}`;
+    window.location.href = `https://datcord.fly.dev/home/server?serverCode=${serverCode}&serverName=${serverName}`;
 }
 
 function getCookie(name) {
@@ -67,7 +67,7 @@ function getCookie(name) {
 function searchPermissionAndUpdateField() {
     let target = searchUsernameField.value;
 
-    fetch(`http://localhost:3000/get-permission?username=${target}&serverCode=${serverCode}`, {
+    fetch(`https://datcord.fly.dev/get-permission?username=${target}&serverCode=${serverCode}`, {
         headers: {
             'Authorization': `Bearer ${token}`,
             "Content-Type": "application/json"
@@ -96,7 +96,7 @@ function modifyPermission() {
     let target = document.getElementById("modify-username-input").value;
     let permissionLevel = document.getElementById("modify-permissionsLevel-input").value;
 
-    fetch(`http://localhost:3000/modify-permission`, {
+    fetch(`https://datcord.fly.dev/modify-permission`, {
         headers: {
             'Authorization': `Bearer ${token}`,
             "Content-Type": "application/json"
