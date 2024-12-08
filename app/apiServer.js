@@ -15,6 +15,7 @@ const app = express();
 
 let port =  8080;
 let pool;
+let env;
 
 let hostname;
 if (process.env.NODE_ENV == "production") {
@@ -22,6 +23,8 @@ if (process.env.NODE_ENV == "production") {
     databaseConfig = { connectionString: `postgres://postgres:${process.env.DATABASE_URL}@datcord-db.flycast:5432/datcord` };
 } else {
     hostname = "localhost";
+    env = require("../appsettings.json");    
+    databaseConfig = env;
 }
 
 try {
