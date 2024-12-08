@@ -13,7 +13,7 @@
   },
   "scripts": {
     "start": "node app/apiServer.js",
-    "setup": "psql -U postgres -f sql/setup.sql"
+    "setup": "psql -U postgres -f sql/localsetup.sql"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"
