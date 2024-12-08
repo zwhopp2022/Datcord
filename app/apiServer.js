@@ -59,6 +59,9 @@ let authorize = async (req, res, next) => {
         return next();
     }
     let { token, username } = req.cookies;
+    if (!token || !username) {
+        return res.redirect('/login');
+    }
     let storedToken = await getToken(username);
     let verified = await bcrypt.compare(token, storedToken);
     if (token === undefined || !(verified)) {
